@@ -12,6 +12,8 @@ function createPrismaClient() {
     // Neon serverless driver — optimal for Vercel/serverless environments
     const { Pool, neonConfig } = require("@neondatabase/serverless");
     const { PrismaNeon } = require("@prisma/adapter-neon");
+    const ws = require("ws");
+    neonConfig.webSocketConstructor = ws;
     neonConfig.fetchConnectionCache = true;
     const pool = new Pool({ connectionString: url });
     const adapter = new PrismaNeon(pool);
