@@ -11,17 +11,7 @@ export const anthropic = new Anthropic({
   apiKey: key,
 });
 
-export async function extractBrandGuidelinesFromText(
-  text: string,
-  brandName: string
-): Promise<Record<string, unknown>> {
-  const message = await anthropic.messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 4096,
-    messages: [
-      {
-        role: "user",
-        content: `You are a brand intelligence extraction specialist. Analyse the following brand guidelines document for "${brandName}" and extract all brand information into a structured JSON object.
+const EXTRACTION_PROMPT = `You are a brand intelligence extraction specialist. Analyse this brand guidelines document and extract all brand information into a structured JSON object.
 
 Extract and structure the following categories where present:
 - logoSystem: logo types, variants, usage rules, clear space, minimum sizes, restrictions
@@ -37,10 +27,50 @@ Extract and structure the following categories where present:
 
 Return ONLY valid JSON. For any category not present in the document, use null.
 For arrays like doList and dontList, extract specific actionable rules.
-For colour values, always include hex. Add other formats (RGB, CMYK, Pantone) if present.
+For colour values, always include hex. Add other formats (RGB, CMYK, Pantone) if present.`;
 
-Document text:
-${text}`,
+export async function extractBrandGuidelinesFromPDF(
+  pdfBase64: string,
+  brandName: string
+): Promise<Record<string, unknown>> {
+  const message = await anthropic.messages.create({
+    model: "claude-3-5-haiku-20241022",
+    max_tokens: 4096,
+    messages: [
+      {
+        role: "user",
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        content: [
+          {
+            type: "document",
+            source: { type: "base64", media_type: "application/pdf", data: pdfBase64 },
+          } as any,
+          { type: "text", text: `Brand name: "${brandName}"\n\n${EXTRACTION_PROMPT}` },
+        ],
+      },
+    ],
+  });
+
+  const content = message.content[0];
+  if (content.type !== "text") throw new Error("Unexpected response type");
+
+  const jsonMatch = content.text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error("No JSON found in response");
+
+  return JSON.parse(jsonMatch[0]);
+}
+
+export async function extractBrandGuidelinesFromText(
+  text: string,
+  brandName: string
+): Promise<Record<string, unknown>> {
+  const message = await anthropic.messages.create({
+    model: "claude-3-5-haiku-20241022",
+    max_tokens: 4096,
+    messages: [
+      {
+        role: "user",
+        content: `Brand name: "${brandName}"\n\n${EXTRACTION_PROMPT}\n\nDocument text:\n${text}`,
       },
     ],
   });

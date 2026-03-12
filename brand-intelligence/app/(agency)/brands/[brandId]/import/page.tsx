@@ -54,6 +54,11 @@ export default function ImportPage() {
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
+    if (f.size > 20 * 1024 * 1024) {
+      setError("File is too large. Please use a PDF under 20MB.");
+      setStatus("error");
+      return;
+    }
     setFile(f);
     setFileName(f.name);
     setStatus("idle");
@@ -108,11 +113,11 @@ export default function ImportPage() {
       );
       setStatus("complete");
     } catch (e) {
-      setError(
-        e instanceof Error && e.name === "AbortError"
-          ? "Request timed out — PDF may be too large. Try a shorter document."
-          : "Request failed — check your network and try again."
-      );
+      if (e instanceof Error && e.name === "AbortError") {
+        setError("Request timed out — PDF may be too large or complex. Try a shorter document.");
+      } else {
+        setError(`Request failed — ${e instanceof Error ? e.message : String(e)}`);
+      }
       setStatus("error");
     } finally {
       clearTimeout(timeout);

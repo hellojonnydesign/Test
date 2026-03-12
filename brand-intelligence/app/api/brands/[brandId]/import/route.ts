@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
-import { extractBrandGuidelinesFromText } from "@/lib/ai/claude";
+import { extractBrandGuidelinesFromPDF, extractBrandGuidelinesFromText } from "@/lib/ai/claude";
 import { requireSession } from "@/lib/auth/session";
 
 export const runtime = "nodejs";
@@ -33,33 +33,41 @@ export async function POST(
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    let extractedText = "";
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const pdfParse = await import("pdf-parse") as any;
-      const pdfData = await (pdfParse.default ?? pdfParse)(buffer);
-      extractedText = pdfData.text;
-    } catch {
-      extractedText = buffer.toString("utf-8").slice(0, 50000);
-    }
-
-    if (!extractedText || extractedText.trim().length < 100) {
+    // 20MB limit to avoid Anthropic API payload limits
+    if (buffer.length > 20 * 1024 * 1024) {
       return NextResponse.json(
-        { error: "Could not extract text from PDF. Ensure the PDF contains selectable text." },
-        { status: 422 }
+        { error: "PDF is too large. Please use a file under 20MB." },
+        { status: 413 }
       );
     }
+
+    const pdfBase64 = buffer.toString("base64");
 
     // Fetch brand name for context
     const sql = neon(process.env.DATABASE_URL!);
     const brands = await sql`SELECT name FROM "Brand" WHERE id = ${brandId} LIMIT 1`;
     const brandName = (brands[0]?.name as string) ?? "Unknown Brand";
 
-    // Limit to 20k chars to keep Claude response time under Vercel's function timeout
-    const extracted = await extractBrandGuidelinesFromText(
-      extractedText.slice(0, 20000),
-      brandName
-    );
+    // Use Claude's native PDF support — no pdf-parse needed
+    let extracted: Record<string, unknown>;
+    try {
+      extracted = await extractBrandGuidelinesFromPDF(pdfBase64, brandName);
+    } catch (pdfErr) {
+      // Fallback: extract text manually and use text-based extraction
+      let text = buffer.toString("utf-8").slice(0, 15000);
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const pdfParse = await import("pdf-parse") as any;
+        const pdfData = await (pdfParse.default ?? pdfParse)(buffer);
+        text = pdfData.text.slice(0, 15000);
+      } catch {
+        // keep utf-8 fallback
+      }
+      if (!text || text.trim().length < 50) {
+        throw pdfErr; // re-throw original error
+      }
+      extracted = await extractBrandGuidelinesFromText(text, brandName);
+    }
 
     // Record the import (best-effort — don't fail if this errors)
     try {
