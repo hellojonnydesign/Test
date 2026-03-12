@@ -12,10 +12,10 @@ function hexToRgb(hex: string) {
 }
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ brandId: string }> }
 ) {
-  const { error } = await requireSession();
+  const { error } = await requireSession(req);
   if (error) return error;
   try {
     const { brandId } = await params;
@@ -33,7 +33,7 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ brandId: string }> }
 ) {
-  const { error } = await requireSession();
+  const { error } = await requireSession(req);
   if (error) return error;
   try {
     const { brandId } = await params;

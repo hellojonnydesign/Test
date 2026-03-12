@@ -4,8 +4,8 @@ import { requireSession } from "@/lib/auth/session";
 
 export const runtime = "nodejs";
 
-export async function GET() {
-  const { error } = await requireSession();
+export async function GET(req: NextRequest) {
+  const { error } = await requireSession(req);
   if (error) return error;
 
   try {
@@ -27,7 +27,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const { error } = await requireSession();
+  const { error } = await requireSession(req);
   if (error) return error;
 
   try {

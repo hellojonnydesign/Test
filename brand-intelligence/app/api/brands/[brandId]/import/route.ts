@@ -8,7 +8,7 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ brandId: string }> }
 ) {
-  const { error } = await requireSession();
+  const { error } = await requireSession(req);
   if (error) return error;
 
   const { brandId } = await params;

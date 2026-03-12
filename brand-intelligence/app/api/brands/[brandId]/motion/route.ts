@@ -6,10 +6,10 @@ import { requireSession } from "@/lib/auth/session";
 export const runtime = "nodejs";
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ brandId: string }> }
 ) {
-  const { error } = await requireSession();
+  const { error } = await requireSession(req);
   if (error) return error;
 
   const { brandId } = await params;
@@ -21,7 +21,7 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ brandId: string }> }
 ) {
-  const { error } = await requireSession();
+  const { error } = await requireSession(req);
   if (error) return error;
 
 
