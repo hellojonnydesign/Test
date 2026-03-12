@@ -1,15 +1,20 @@
 import Anthropic from "@anthropic-ai/sdk";
 
-const key = process.env.ANTHROPIC_API_KEY;
-if (!key || key === "your-anthropic-api-key") {
-  console.warn(
-    "[brand-intelligence] ANTHROPIC_API_KEY is not set. AI features (generate, import) will fail until you add a real key to .env"
-  );
+// Lazy — only instantiated when an API call is made, not at module load time.
+// This prevents a missing ANTHROPIC_API_KEY from crashing the module (and every
+// route that imports it) before any error handler can respond.
+let _client: Anthropic | null = null;
+function getClient(): Anthropic {
+  if (!_client) {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey || apiKey === "your-anthropic-api-key") {
+      throw new Error("ANTHROPIC_API_KEY is not configured. Add it to your Vercel environment variables.");
+    }
+    _client = new Anthropic({ apiKey });
+  }
+  return _client;
 }
 
-export const anthropic = new Anthropic({
-  apiKey: key,
-});
 
 const EXTRACTION_PROMPT = `You are a brand intelligence extraction specialist. Analyse this brand guidelines document and extract all brand information into a structured JSON object.
 
@@ -29,42 +34,11 @@ Return ONLY valid JSON. For any category not present in the document, use null.
 For arrays like doList and dontList, extract specific actionable rules.
 For colour values, always include hex. Add other formats (RGB, CMYK, Pantone) if present.`;
 
-export async function extractBrandGuidelinesFromPDF(
-  pdfBase64: string,
-  brandName: string
-): Promise<Record<string, unknown>> {
-  const message = await anthropic.messages.create({
-    model: "claude-3-5-haiku-20241022",
-    max_tokens: 4096,
-    messages: [
-      {
-        role: "user",
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        content: [
-          {
-            type: "document",
-            source: { type: "base64", media_type: "application/pdf", data: pdfBase64 },
-          } as any,
-          { type: "text", text: `Brand name: "${brandName}"\n\n${EXTRACTION_PROMPT}` },
-        ],
-      },
-    ],
-  });
-
-  const content = message.content[0];
-  if (content.type !== "text") throw new Error("Unexpected response type");
-
-  const jsonMatch = content.text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error("No JSON found in response");
-
-  return JSON.parse(jsonMatch[0]);
-}
-
 export async function extractBrandGuidelinesFromText(
   text: string,
   brandName: string
 ): Promise<Record<string, unknown>> {
-  const message = await anthropic.messages.create({
+  const message = await getClient().messages.create({
     model: "claude-3-5-haiku-20241022",
     max_tokens: 2048,
     messages: [
@@ -97,7 +71,7 @@ export async function generateBrandConfig(brand: {
   pattern?: Record<string, unknown> | null;
   brandVoice?: Record<string, unknown> | null;
 }): Promise<Record<string, unknown>> {
-  const message = await anthropic.messages.create({
+  const message = await getClient().messages.create({
     model: "claude-sonnet-4-6",
     max_tokens: 8192,
     messages: [
@@ -162,7 +136,7 @@ export async function generatePlatformPrompt(
       "Generate a Canva AI brand style description covering colour palette (with hex values), typography guidance, visual style, and composition principles for use in Canva's AI tools.",
   };
 
-  const message = await anthropic.messages.create({
+  const message = await getClient().messages.create({
     model: "claude-sonnet-4-6",
     max_tokens: 2048,
     messages: [
