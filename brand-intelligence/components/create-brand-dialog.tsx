@@ -28,24 +28,37 @@ export function CreateBrandDialog({ clientId }: { clientId: string }) {
     setIsCreating(true);
     setError("");
 
-    const res = await fetch("/api/brands", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: name.trim(), description: description.trim() || null, clientId }),
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
 
-    if (res.ok) {
-      const brand = await res.json();
-      setOpen(false);
-      setName("");
-      setDescription("");
-      router.push(`/brands/${brand.id}/identity`);
-    } else {
-      const data = await res.json();
-      setError(data.error ?? "Failed to create brand");
+    try {
+      const res = await fetch("/api/brands", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim(), description: description.trim() || null, clientId }),
+        signal: controller.signal,
+      });
+
+      if (res.ok) {
+        const brand = await res.json();
+        setOpen(false);
+        setName("");
+        setDescription("");
+        router.push(`/brands/${brand.id}/identity`);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? `Error ${res.status}`);
+      }
+    } catch (e) {
+      setError(
+        e instanceof Error && e.name === "AbortError"
+          ? "Request timed out — please try again"
+          : "Network error — please try again"
+      );
+    } finally {
+      clearTimeout(timeout);
+      setIsCreating(false);
     }
-
-    setIsCreating(false);
   }
 
   return (
