@@ -1,44 +1,49 @@
 import { NextResponse } from "next/server";
-import { Pool } from "pg";
 import { prisma } from "@/lib/db/prisma";
+import bcrypt from "bcryptjs";
 
 export async function GET() {
   const checks: Record<string, unknown> = {};
 
   const dbUrl = process.env.DATABASE_URL ?? "";
-  let dbHost = "NOT SET";
-  try { dbHost = new URL(dbUrl).hostname; } catch {}
   checks.env = {
     DATABASE_URL: !!dbUrl,
-    DATABASE_URL_host: dbHost,
     NEXTAUTH_SECRET: !!process.env.NEXTAUTH_SECRET,
     NEXTAUTH_URL: process.env.NEXTAUTH_URL ?? "NOT SET",
   };
 
-  // Test 1: plain pg Pool
+  // Simulate exactly what the authorize function does
   try {
-    const pool = new Pool({ connectionString: dbUrl, ssl: { rejectUnauthorized: false } });
-    const result = await pool.query(`SELECT email FROM "User" WHERE email = $1`, ["jonnyspinder@gmail.com"]);
-    await pool.end();
-    checks.pg = { connected: true, userFound: result.rows.length > 0 };
-  } catch (err) {
-    checks.pg = { connected: false, error: String(err) };
-  }
+    const email = "jonnyspinder@gmail.com";
+    const password = "admin123";
 
-  // Test 2: PrismaNeonHttp singleton (what auth uses)
-  try {
     const user = await prisma.user.findUnique({
-      where: { email: "jonnyspinder@gmail.com" },
-      select: { email: true, passwordHash: true },
+      where: { email },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        agencyId: true,
+        passwordHash: true,
+      },
     });
-    checks.prisma = {
-      connected: true,
-      userFound: !!user,
-      hasPasswordHash: !!user?.passwordHash,
-      passwordHashPrefix: user?.passwordHash?.slice(0, 7) ?? null,
-    };
+
+    if (!user || !user.passwordHash) {
+      checks.auth = { step: "user_lookup", result: "no user or no hash", userFound: !!user };
+    } else {
+      const valid = await bcrypt.compare(password, user.passwordHash);
+      checks.auth = {
+        step: "bcrypt_compare",
+        userFound: true,
+        hasHash: true,
+        hashPrefix: user.passwordHash.slice(0, 7),
+        passwordValid: valid,
+        wouldLogin: valid,
+      };
+    }
   } catch (err) {
-    checks.prisma = { connected: false, error: String(err) };
+    checks.auth = { step: "error", error: String(err) };
   }
 
   return NextResponse.json(checks);
