@@ -71,16 +71,26 @@ export default function ImportPage() {
     const formData = new FormData();
     formData.append("file", file);
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 55000);
+
     try {
       const res = await fetch(`/api/brands/${brandId}/import`, {
         method: "POST",
         body: formData,
+        signal: controller.signal,
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
 
       if (!res.ok) {
-        setError(data.error || "Import failed");
+        setError(data?.error || `Error ${res.status} — check that ANTHROPIC_API_KEY is set in Vercel`);
+        setStatus("error");
+        return;
+      }
+
+      if (!data?.extracted) {
+        setError("Unexpected response from server. Please try again.");
         setStatus("error");
         return;
       }
@@ -97,9 +107,15 @@ export default function ImportPage() {
         }))
       );
       setStatus("complete");
-    } catch {
-      setError("Request failed. Please try again.");
+    } catch (e) {
+      setError(
+        e instanceof Error && e.name === "AbortError"
+          ? "Request timed out — PDF may be too large. Try a shorter document."
+          : "Request failed — check your network and try again."
+      );
       setStatus("error");
+    } finally {
+      clearTimeout(timeout);
     }
   }
 

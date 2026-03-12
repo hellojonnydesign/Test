@@ -4,6 +4,7 @@ import { extractBrandGuidelinesFromText } from "@/lib/ai/claude";
 import { requireSession } from "@/lib/auth/session";
 
 export const runtime = "nodejs";
+export const maxDuration = 60; // allow up to 60s for Claude processing (Vercel Pro)
 
 export async function POST(
   req: NextRequest,
@@ -54,8 +55,9 @@ export async function POST(
     const brands = await sql`SELECT name FROM "Brand" WHERE id = ${brandId} LIMIT 1`;
     const brandName = (brands[0]?.name as string) ?? "Unknown Brand";
 
+    // Limit to 20k chars to keep Claude response time under Vercel's function timeout
     const extracted = await extractBrandGuidelinesFromText(
-      extractedText.slice(0, 40000),
+      extractedText.slice(0, 20000),
       brandName
     );
 
