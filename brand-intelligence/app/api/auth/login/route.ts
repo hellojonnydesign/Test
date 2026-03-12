@@ -20,12 +20,12 @@ export async function POST(request: NextRequest) {
     const rows = await sql`
       SELECT id, email, name, role, "agencyId", "passwordHash"
       FROM "User"
-      WHERE email = ${email}
+      WHERE LOWER(email) = LOWER(${email})
     `;
     const user = rows[0];
 
     if (!user || !user.passwordHash) {
-      return NextResponse.json({ error: "User not found", step }, { status: 401 });
+      return NextResponse.json({ error: `User not found: "${email}"`, step }, { status: 401 });
     }
 
     step = "bcrypt";
