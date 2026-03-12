@@ -5,9 +5,14 @@ export async function GET() {
   const checks: Record<string, unknown> = {};
 
   // Check env vars (values hidden, just presence)
+  const dbUrl = process.env.DATABASE_URL ?? "";
+  let dbHost = "NOT SET";
+  try { dbHost = new URL(dbUrl).hostname; } catch {}
   checks.env = {
-    DATABASE_URL: !!process.env.DATABASE_URL,
-    DATABASE_URL_has_channel_binding: process.env.DATABASE_URL?.includes("channel_binding") ?? false,
+    DATABASE_URL: !!dbUrl,
+    DATABASE_URL_host: dbHost,
+    DATABASE_URL_has_neon: dbUrl.includes("neon.tech"),
+    DATABASE_URL_has_channel_binding: dbUrl.includes("channel_binding"),
     NEXTAUTH_SECRET: !!process.env.NEXTAUTH_SECRET,
     NEXTAUTH_URL: process.env.NEXTAUTH_URL ?? "NOT SET",
   };
