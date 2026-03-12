@@ -1,12 +1,26 @@
 "use client";
 
 import { useState } from "react";
+import { useParams } from "next/navigation";
 import { Upload, FileText, Loader2, CheckCircle, AlertCircle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
-type ImportStatus = "idle" | "uploading" | "processing" | "complete" | "error";
+type ImportStatus = "idle" | "uploading" | "complete" | "error";
+
+const ALL_SECTIONS = [
+  { key: "logoSystem", label: "Logo System" },
+  { key: "colourSystem", label: "Colour System" },
+  { key: "typography", label: "Typography" },
+  { key: "photography", label: "Photography" },
+  { key: "illustration", label: "Illustration" },
+  { key: "motion", label: "Motion" },
+  { key: "brandVoice", label: "Brand Voice" },
+  { key: "iconography", label: "Iconography" },
+  { key: "gridLayout", label: "Grid & Layout" },
+  { key: "pattern", label: "Pattern & Texture" },
+];
 
 interface ExtractedSection {
   key: string;
@@ -15,47 +29,95 @@ interface ExtractedSection {
   preview?: string;
 }
 
+function sectionPreview(key: string, data: Record<string, unknown>): string {
+  const val = data[key] as Record<string, unknown> | null;
+  if (!val) return "";
+  const entries = Object.entries(val).filter(([, v]) => v !== null && v !== undefined);
+  if (!entries.length) return "";
+  const first = entries.slice(0, 2).map(([k]) => k.replace(/([A-Z])/g, " $1").toLowerCase()).join(", ");
+  return `Extracted: ${first}${entries.length > 2 ? ` + ${entries.length - 2} more fields` : ""}`;
+}
+
 export default function ImportPage() {
+  const params = useParams();
+  const brandId = params.brandId as string;
+
   const [status, setStatus] = useState<ImportStatus>("idle");
+  const [file, setFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState("");
   const [extractedSections, setExtractedSections] = useState<ExtractedSection[]>([]);
+  const [extractedData, setExtractedData] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState("");
+  const [applying, setApplying] = useState(false);
+  const [applied, setApplied] = useState(false);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setFileName(file.name);
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setFile(f);
+    setFileName(f.name);
     setStatus("idle");
     setExtractedSections([]);
+    setExtractedData(null);
     setError("");
+    setApplied(false);
   }
 
   async function handleImport() {
-    if (!fileName) return;
+    if (!file) return;
     setStatus("uploading");
+    setError("");
 
-    // Simulate processing — in production this calls /api/brands/[brandId]/import
-    setTimeout(() => setStatus("processing"), 1200);
-    setTimeout(() => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await fetch(`/api/brands/${brandId}/import`, {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "Import failed");
+        setStatus("error");
+        return;
+      }
+
+      const extracted = data.extracted as Record<string, unknown>;
+      const sectionsFound: string[] = data.sectionsFound ?? [];
+
+      setExtractedData(extracted);
+      setExtractedSections(
+        ALL_SECTIONS.map((s) => ({
+          ...s,
+          found: sectionsFound.includes(s.key),
+          preview: sectionsFound.includes(s.key) ? sectionPreview(s.key, extracted) : undefined,
+        }))
+      );
       setStatus("complete");
-      setExtractedSections([
-        { key: "logoSystem", label: "Logo System", found: true, preview: "Primary logo, wordmark, icon variants identified. Clear space rules extracted." },
-        { key: "colourSystem", label: "Colour System", found: true, preview: "4 palettes found: Primary (3 colours), Secondary (4 colours), Neutral (5 colours), Accent (2 colours)." },
-        { key: "typography", label: "Typography", found: true, preview: "2 typefaces identified: GT Walsheim (Primary/Display), GT Walsheim Light (Body)." },
-        { key: "photography", label: "Photography", found: true, preview: "Documentary style, warm colour treatment, lifestyle subjects, natural lighting guidelines extracted." },
-        { key: "illustration", label: "Illustration", found: false },
-        { key: "motion", label: "Motion", found: true, preview: "Easing principles and transition guidelines found." },
-        { key: "brandVoice", label: "Brand Voice", found: true, preview: "4 personality traits, vocabulary list, and tone guidance extracted." },
-        { key: "iconography", label: "Iconography", found: false },
-        { key: "gridLayout", label: "Grid & Layout", found: true, preview: "12-column grid, 8px spacing base, margin guidelines found." },
-        { key: "pattern", label: "Pattern & Texture", found: false },
-      ]);
-    }, 4000);
+    } catch {
+      setError("Request failed. Please try again.");
+      setStatus("error");
+    }
   }
 
   async function applyExtracted() {
-    // In production: POST to API to write extracted data to brand modules
-    alert("In production: this would populate all brand modules with the extracted data.");
+    if (!extractedData) return;
+    setApplying(true);
+    try {
+      await fetch(`/api/brands/${brandId}/import/apply`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ extracted: extractedData }),
+      });
+      setApplied(true);
+    } catch {
+      // ignore
+    } finally {
+      setApplying(false);
+    }
   }
 
   return (
@@ -70,7 +132,7 @@ export default function ImportPage() {
       {/* Upload */}
       <Card className="mb-6">
         <CardContent className="pt-6">
-          {status === "idle" || status === "uploading" || status === "processing" ? (
+          {status !== "complete" ? (
             <div>
               <label
                 htmlFor="pdf-upload"
@@ -103,43 +165,39 @@ export default function ImportPage() {
                 />
               </label>
 
-              {status === "uploading" || status === "processing" ? (
+              {status === "uploading" ? (
                 <div className="mt-4 flex items-center gap-3 rounded-lg bg-[var(--muted)] p-4">
                   <Loader2 className="h-5 w-5 animate-spin text-[var(--primary)] shrink-0" />
                   <div>
-                    <p className="text-sm font-medium">
-                      {status === "uploading" ? "Uploading..." : "Claude is analysing your brand guidelines..."}
+                    <p className="text-sm font-medium">Claude is analysing your brand guidelines...</p>
+                    <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
+                      Extracting logo system, colours, typography, photography, voice, and more
                     </p>
-                    {status === "processing" && (
-                      <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
-                        Extracting logo system, colours, typography, photography, voice, and more
-                      </p>
-                    )}
                   </div>
                 </div>
               ) : (
-                fileName && (
+                fileName && status !== "error" && (
                   <Button onClick={handleImport} className="mt-4 w-full">
                     Extract Brand Intelligence
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 )
               )}
+
+              {status === "error" && (
+                <div className="mt-4 flex items-start gap-3 rounded-lg bg-red-50 p-4">
+                  <AlertCircle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-red-700">Extraction failed</p>
+                    <p className="text-xs text-red-600 mt-0.5">{error}</p>
+                    <Button variant="outline" size="sm" className="mt-3" onClick={() => { setStatus("idle"); setError(""); }}>
+                      Try again
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           ) : null}
-
-          {status === "error" && (
-            <div className="flex items-start gap-3 rounded-lg bg-red-50 p-4">
-              <AlertCircle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-red-700">Extraction failed</p>
-                <p className="text-xs text-red-600 mt-0.5">{error}</p>
-                <Button variant="outline" size="sm" className="mt-3" onClick={() => { setStatus("idle"); setError(""); }}>
-                  Try again
-                </Button>
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
 
@@ -191,19 +249,31 @@ export default function ImportPage() {
             ))}
           </div>
 
-          <div className="flex items-center gap-3">
-            <Button onClick={applyExtracted}>
-              Apply to Brand Modules
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-            <p className="text-xs text-[var(--muted-foreground)]">
-              You can review and edit each module after applying
-            </p>
-          </div>
+          {applied ? (
+            <div className="flex items-center gap-3 rounded-lg bg-emerald-50 border border-emerald-200 p-4 mb-6">
+              <CheckCircle className="h-5 w-5 text-emerald-500 shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-emerald-800">Applied to brand modules</p>
+                <p className="text-xs text-emerald-600 mt-0.5">Review and refine each module to complete your brand system.</p>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <Button onClick={applyExtracted} disabled={applying}>
+                {applying ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Applying...</>
+                ) : (
+                  <>Apply to Brand Modules<ArrowRight className="ml-2 h-4 w-4" /></>
+                )}
+              </Button>
+              <p className="text-xs text-[var(--muted-foreground)]">
+                You can review and edit each module after applying
+              </p>
+            </div>
+          )}
         </>
       )}
 
-      {/* Tip */}
       <div className="mt-8 rounded-lg bg-[var(--muted)] p-4">
         <p className="text-xs font-medium mb-1">When to use PDF import vs native input</p>
         <p className="text-xs text-[var(--muted-foreground)]">

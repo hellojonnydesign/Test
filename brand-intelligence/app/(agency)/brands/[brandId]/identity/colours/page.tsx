@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
 import { Plus, Trash2, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -58,10 +59,54 @@ function newPalette(): Palette {
 }
 
 export default function ColoursPage() {
+  const params = useParams();
+  const brandId = params.brandId as string;
+
   const [palettes, setPalettes] = useState<Palette[]>([newPalette()]);
   const [usageRules, setUsageRules] = useState("");
   const [accessibilityNotes, setAccessibilityNotes] = useState("");
   const [darkModeGuidance, setDarkModeGuidance] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/brands/${brandId}/colour-system`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data) return;
+        setUsageRules(data.usageRules ?? "");
+        setAccessibilityNotes(data.accessibilityNotes ?? "");
+        setDarkModeGuidance(data.darkModeGuidance ?? "");
+        if (data.palettes?.length) {
+          setPalettes(
+            data.palettes.map((pal: { id: string; name: string; role?: string; colours: Array<{ id: string; name: string; hex: string; pantone?: string; cmyk?: { value?: string } | string | null; usageNote?: string; isPrimary?: boolean }> }) => ({
+              id: pal.id,
+              name: pal.name,
+              role: pal.role ?? "",
+              colours: pal.colours.map((c) => ({
+                id: c.id,
+                name: c.name,
+                hex: c.hex,
+                pantone: c.pantone ?? "",
+                cmyk: typeof c.cmyk === "object" && c.cmyk !== null ? (c.cmyk as { value?: string }).value ?? "" : (c.cmyk as string) ?? "",
+                usageNote: c.usageNote ?? "",
+                isPrimary: c.isPrimary ?? false,
+              })),
+            }))
+          );
+        }
+      })
+      .catch(() => {});
+  }, [brandId]);
+
+  async function handleSave() {
+    setIsSaving(true);
+    await fetch(`/api/brands/${brandId}/colour-system`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ palettes, usageRules, accessibilityNotes, darkModeGuidance }),
+    });
+    setIsSaving(false);
+  }
 
   function addPalette() {
     setPalettes((p) => [...p, newPalette()]);
@@ -324,7 +369,9 @@ export default function ColoursPage() {
       </div>
 
       <div className="mt-6">
-        <Button>Save Colour System</Button>
+        <Button onClick={handleSave} disabled={isSaving}>
+          {isSaving ? "Saving…" : "Save Colour System"}
+        </Button>
       </div>
     </div>
   );

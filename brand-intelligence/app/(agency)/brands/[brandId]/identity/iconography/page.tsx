@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
 import { Plus, X, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -12,6 +13,9 @@ const ICON_STYLES = ["Outline", "Filled", "Duotone", "Line", "Glyph", "Rounded",
 const CORNER_RADII = ["Sharp (0px)", "Slightly rounded (2px)", "Rounded (4px)", "Pill (full)"];
 
 export default function IconographyPage() {
+  const params = useParams();
+  const brandId = params.brandId as string;
+
   const [style, setStyle] = useState("");
   const [gridSize, setGridSize] = useState("24");
   const [strokeWeight, setStrokeWeight] = useState("");
@@ -20,6 +24,39 @@ export default function IconographyPage() {
   const [opticalSizing, setOpticalSizing] = useState("");
   const [doList, setDoList] = useState<string[]>([""]);
   const [dontList, setDontList] = useState<string[]>([""]);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/brands/${brandId}/iconography`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data) return;
+        setStyle(data.style ?? "");
+        setGridSize(data.gridSize?.toString() ?? "24");
+        setStrokeWeight(data.strokeWeight ?? "");
+        setCornerRadius(data.cornerRadius ?? "");
+        setColourUsage(data.colourUsage ?? "");
+        setOpticalSizing(data.opticalSizing ?? "");
+        setDoList(data.doList?.length ? data.doList : [""]);
+        setDontList(data.dontList?.length ? data.dontList : [""]);
+      })
+      .catch(() => {});
+  }, [brandId]);
+
+  async function handleSave() {
+    setIsSaving(true);
+    await fetch(`/api/brands/${brandId}/iconography`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        style, gridSize, strokeWeight, cornerRadius,
+        colourUsage, opticalSizing,
+        doList: doList.filter(Boolean),
+        dontList: dontList.filter(Boolean),
+      }),
+    });
+    setIsSaving(false);
+  }
 
   return (
     <div className="p-8 max-w-4xl">
@@ -125,7 +162,9 @@ export default function IconographyPage() {
         </CardContent>
       </Card>
 
-      <Button>Save Iconography</Button>
+      <Button onClick={handleSave} disabled={isSaving}>
+        {isSaving ? "Saving…" : "Save Iconography"}
+      </Button>
     </div>
   );
 }

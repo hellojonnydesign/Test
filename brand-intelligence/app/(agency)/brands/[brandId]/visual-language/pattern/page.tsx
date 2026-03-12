@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
 import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -14,10 +15,37 @@ const PATTERN_STYLES = [
 ];
 
 export default function PatternPage() {
+  const params = useParams();
+  const brandId = params.brandId as string;
+
   const [patternStyle, setPatternStyle] = useState("");
   const [graphicDevices, setGraphicDevices] = useState("");
   const [textureNotes, setTextureNotes] = useState("");
   const [usageRules, setUsageRules] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/brands/${brandId}/pattern`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data) return;
+        setPatternStyle(data.patternStyle ?? "");
+        setGraphicDevices(data.graphicDevices ?? "");
+        setTextureNotes(data.textureNotes ?? "");
+        setUsageRules(data.usageRules ?? "");
+      })
+      .catch(() => {});
+  }, [brandId]);
+
+  async function handleSave() {
+    setIsSaving(true);
+    await fetch(`/api/brands/${brandId}/pattern`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ patternStyle, graphicDevices, textureNotes, usageRules }),
+    });
+    setIsSaving(false);
+  }
 
   return (
     <div className="p-8 max-w-4xl">
@@ -74,7 +102,9 @@ export default function PatternPage() {
         </CardContent>
       </Card>
 
-      <Button>Save Pattern & Texture</Button>
+      <Button onClick={handleSave} disabled={isSaving}>
+        {isSaving ? "Saving…" : "Save Pattern & Texture"}
+      </Button>
     </div>
   );
 }

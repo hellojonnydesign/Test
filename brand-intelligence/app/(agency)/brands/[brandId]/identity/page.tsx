@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
 import { Upload, Plus, Trash2, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -23,6 +24,9 @@ interface LogoAsset {
 }
 
 export default function LogoSystemPage() {
+  const params = useParams();
+  const brandId = params.brandId as string;
+
   const [assets, setAssets] = useState<LogoAsset[]>([]);
   const [clearSpace, setClearSpace] = useState("");
   const [minSizePx, setMinSizePx] = useState("");
@@ -30,6 +34,28 @@ export default function LogoSystemPage() {
   const [usageRules, setUsageRules] = useState("");
   const [restrictions, setRestrictions] = useState("");
   const [backgroundUsage, setBackgroundUsage] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/brands/${brandId}/logo-system`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data) return;
+        setClearSpace(data.clearSpaceRule ?? "");
+        setMinSizePx(data.minimumSizePx?.toString() ?? "");
+        setMinSizeMm(data.minimumSizeMm?.toString() ?? "");
+        setUsageRules(data.usageRules ?? "");
+        setRestrictions(data.restrictions ?? "");
+        setBackgroundUsage(data.backgroundUsage ?? "");
+        if (data.assets?.length) {
+          setAssets(data.assets.map((a: { id: string; name: string; type: string; variant: string; fileUrl: string; format: string; usageNote?: string }) => ({
+            id: a.id, name: a.name, type: a.type, variant: a.variant,
+            fileUrl: a.fileUrl, format: a.format, usageNote: a.usageNote ?? "",
+          })));
+        }
+      })
+      .catch(() => {});
+  }, [brandId]);
 
   function addAsset() {
     setAssets((prev) => [
@@ -56,9 +82,17 @@ export default function LogoSystemPage() {
     );
   }
 
-  function handleSave() {
-    console.log("Saving logo system...", { assets, clearSpace, minSizePx, usageRules, restrictions, backgroundUsage });
-    // TODO: POST to /api/brands/[brandId]/logo-system
+  async function handleSave() {
+    setIsSaving(true);
+    await fetch(`/api/brands/${brandId}/logo-system`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        assets, clearSpaceRule: clearSpace, minimumSizePx: minSizePx,
+        minimumSizeMm: minSizeMm, usageRules, restrictions, backgroundUsage,
+      }),
+    });
+    setIsSaving(false);
   }
 
   return (
@@ -246,7 +280,9 @@ export default function LogoSystemPage() {
       </Card>
 
       <div className="flex items-center gap-3">
-        <Button onClick={handleSave}>Save Logo System</Button>
+        <Button onClick={handleSave} disabled={isSaving}>
+          {isSaving ? "Saving…" : "Save Logo System"}
+        </Button>
         <div className="flex items-center gap-1.5 text-xs text-[var(--muted-foreground)]">
           <Info className="h-3.5 w-3.5" />
           This data feeds directly into your AI outputs

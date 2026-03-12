@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -36,10 +37,50 @@ function newTypeface(): Typeface {
 }
 
 export default function TypographyPage() {
+  const params = useParams();
+  const brandId = params.brandId as string;
+
   const [typefaces, setTypefaces] = useState<Typeface[]>([newTypeface()]);
   const [hierarchyRules, setHierarchyRules] = useState("");
   const [usageGuidelines, setUsageGuidelines] = useState("");
   const [pairingRules, setPairingRules] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/brands/${brandId}/typography`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data) return;
+        setHierarchyRules(data.hierarchyRules ?? "");
+        setUsageGuidelines(data.usageGuidelines ?? "");
+        setPairingRules(data.pairingRules ?? "");
+        if (data.typefaces?.length) {
+          setTypefaces(
+            data.typefaces.map((tf: { id: string; name: string; role: string; weights: string[]; source?: string; fallbackStack?: string; usageRules?: string; licenseNote?: string }) => ({
+              id: tf.id,
+              name: tf.name,
+              role: tf.role,
+              weights: tf.weights,
+              source: tf.source ?? "",
+              fallbackStack: tf.fallbackStack ?? "",
+              usageRules: tf.usageRules ?? "",
+              licenseNote: tf.licenseNote ?? "",
+            }))
+          );
+        }
+      })
+      .catch(() => {});
+  }, [brandId]);
+
+  async function handleSave() {
+    setIsSaving(true);
+    await fetch(`/api/brands/${brandId}/typography`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ typefaces, hierarchyRules, usageGuidelines, pairingRules }),
+    });
+    setIsSaving(false);
+  }
 
   function addTypeface() {
     setTypefaces((t) => [...t, newTypeface()]);
@@ -239,7 +280,9 @@ export default function TypographyPage() {
       </div>
 
       <div className="mt-6">
-        <Button>Save Typography</Button>
+        <Button onClick={handleSave} disabled={isSaving}>
+          {isSaving ? "Saving…" : "Save Typography"}
+        </Button>
       </div>
     </div>
   );

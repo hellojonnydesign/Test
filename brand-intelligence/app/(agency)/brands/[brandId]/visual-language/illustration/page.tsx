@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
 import { Plus, X, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -23,6 +24,9 @@ const LINE_WEIGHTS = ["None (filled only)", "Thin (0.5–1px)", "Medium (1.5–2
 const PERSPECTIVES = ["Flat / 2D", "Isometric", "3D perspective", "Mixed", "Axonometric"];
 
 export default function IllustrationPage() {
+  const params = useParams();
+  const brandId = params.brandId as string;
+
   const [style, setStyle] = useState("");
   const [technique, setTechnique] = useState("");
   const [lineWeight, setLineWeight] = useState("");
@@ -32,6 +36,40 @@ export default function IllustrationPage() {
   const [subjects, setSubjects] = useState("");
   const [doItems, setDoItems] = useState<string[]>([""]);
   const [dontItems, setDontItems] = useState<string[]>([""]);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/brands/${brandId}/illustration`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data) return;
+        setStyle(data.style ?? "");
+        setTechnique(data.technique ?? "");
+        setLineWeight(data.lineWeight ?? "");
+        setPerspective(data.perspective ?? "");
+        setColourPalette(data.colourPalette ?? "");
+        setColourApplication((data.colourApplication as { value?: string } | null)?.value ?? "");
+        setSubjects((data.subjects as { value?: string } | null)?.value ?? "");
+        setDoItems(data.doList?.length ? data.doList : [""]);
+        setDontItems(data.dontList?.length ? data.dontList : [""]);
+      })
+      .catch(() => {});
+  }, [brandId]);
+
+  async function handleSave() {
+    setIsSaving(true);
+    await fetch(`/api/brands/${brandId}/illustration`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        style, technique, lineWeight, perspective,
+        colourPalette, colourApplication, subjects,
+        doList: doItems.filter(Boolean),
+        dontList: dontItems.filter(Boolean),
+      }),
+    });
+    setIsSaving(false);
+  }
 
   function updateListItem(
     list: string[],
@@ -265,7 +303,9 @@ export default function IllustrationPage() {
         </CardContent>
       </Card>
 
-      <Button>Save Illustration Guidelines</Button>
+      <Button onClick={handleSave} disabled={isSaving}>
+        {isSaving ? "Saving…" : "Save Illustration Guidelines"}
+      </Button>
     </div>
   );
 }
