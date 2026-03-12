@@ -25,13 +25,13 @@ export async function POST(request: NextRequest) {
     const user = rows[0];
 
     if (!user || !user.passwordHash) {
-      return NextResponse.json({ error: `User not found: "${email}"`, step }, { status: 401 });
+      return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
     }
 
     step = "bcrypt";
     const valid = await bcrypt.compare(password, user.passwordHash as string);
     if (!valid) {
-      return NextResponse.json({ error: "Wrong password", step }, { status: 401 });
+      return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
     }
 
     step = "encode";
