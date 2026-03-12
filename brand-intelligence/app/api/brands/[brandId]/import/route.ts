@@ -33,20 +33,11 @@ export async function POST(
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // Extract text from PDF — fast path for serverless (10s limit on Hobby plan)
-    let text = "";
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const pdfParse = await import("pdf-parse") as any;
-      const pdfData = await (pdfParse.default ?? pdfParse)(buffer);
-      text = pdfData.text ?? "";
-    } catch {
-      // pdf-parse failed; fall back to raw buffer (will be low quality but won't crash)
-      text = buffer.toString("latin1");
-    }
-
-    // Trim to 4000 chars — keeps Claude call under ~2s on Haiku
-    text = text.replace(/\s+/g, " ").trim().slice(0, 4000);
+    // Synchronous text extraction — no async libs, instant execution
+    // Extracts printable ASCII sequences from the PDF binary (works for text-based PDFs)
+    const raw = buffer.toString("latin1");
+    const sequences = raw.match(/[ -~\n\r\t]{5,}/g) ?? [];
+    const text = sequences.join(" ").replace(/\s+/g, " ").trim().slice(0, 4000);
 
     if (text.length < 50) {
       return NextResponse.json(
