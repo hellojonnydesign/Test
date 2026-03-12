@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { requireSession } from "@/lib/auth/session";
 
+export const runtime = "nodejs";
+
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ brandId: string }> }
@@ -20,6 +22,9 @@ export async function PUT(
 ) {
   const { error } = await requireSession();
   if (error) return error;
+
+
+  try {
 
   const { brandId } = await params;
   const body = await req.json();
@@ -50,4 +55,7 @@ export async function PUT(
   });
 
   return NextResponse.json(data);
+  } catch (err) {
+    return NextResponse.json({ error: String(err) }, { status: 500 });
+  }
 }

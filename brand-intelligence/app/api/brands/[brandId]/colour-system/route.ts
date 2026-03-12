@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { requireSession } from "@/lib/auth/session";
 
+export const runtime = "nodejs";
+
 function hexToRgb(hex: string) {
   const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   return r
@@ -15,13 +17,16 @@ export async function GET(
 ) {
   const { error } = await requireSession();
   if (error) return error;
-
-  const { brandId } = await params;
-  const data = await prisma.colourSystem.findUnique({
-    where: { brandId },
-    include: { palettes: { include: { colours: true }, orderBy: { order: "asc" } } },
-  });
-  return NextResponse.json(data);
+  try {
+    const { brandId } = await params;
+    const data = await prisma.colourSystem.findUnique({
+      where: { brandId },
+      include: { palettes: { include: { colours: true }, orderBy: { order: "asc" } } },
+    });
+    return NextResponse.json(data);
+  } catch (err) {
+    return NextResponse.json({ error: String(err) }, { status: 500 });
+  }
 }
 
 export async function PUT(
@@ -30,42 +35,25 @@ export async function PUT(
 ) {
   const { error } = await requireSession();
   if (error) return error;
+  try {
+    const { brandId } = await params;
+    const body = await req.json();
 
-  const { brandId } = await params;
-  const body = await req.json();
-
-  const result = await prisma.$transaction(async (tx) => {
-    const cs = await tx.colourSystem.upsert({
+    const cs = await prisma.colourSystem.upsert({
       where: { brandId },
-      create: {
-        brandId,
-        usageRules: body.usageRules ?? null,
-        accessibilityNotes: body.accessibilityNotes ?? null,
-        darkModeGuidance: body.darkModeGuidance ?? null,
-      },
-      update: {
-        usageRules: body.usageRules ?? null,
-        accessibilityNotes: body.accessibilityNotes ?? null,
-        darkModeGuidance: body.darkModeGuidance ?? null,
-      },
+      create: { brandId, usageRules: body.usageRules ?? null, accessibilityNotes: body.accessibilityNotes ?? null, darkModeGuidance: body.darkModeGuidance ?? null },
+      update: { usageRules: body.usageRules ?? null, accessibilityNotes: body.accessibilityNotes ?? null, darkModeGuidance: body.darkModeGuidance ?? null },
     });
 
-    // Delete existing colours first, then palettes
-    const existingPalettes = await tx.palette.findMany({
-      where: { colourSystemId: cs.id },
-      select: { id: true },
-    });
+    const existingPalettes = await prisma.palette.findMany({ where: { colourSystemId: cs.id }, select: { id: true } });
     if (existingPalettes.length > 0) {
-      await tx.colour.deleteMany({
-        where: { paletteId: { in: existingPalettes.map((p) => p.id) } },
-      });
-      await tx.palette.deleteMany({ where: { colourSystemId: cs.id } });
+      await prisma.colour.deleteMany({ where: { paletteId: { in: existingPalettes.map((p) => p.id) } } });
+      await prisma.palette.deleteMany({ where: { colourSystemId: cs.id } });
     }
 
-    // Recreate palettes with colours
     for (let i = 0; i < (body.palettes ?? []).length; i++) {
       const pal = body.palettes[i];
-      await tx.palette.create({
+      await prisma.palette.create({
         data: {
           colourSystemId: cs.id,
           name: pal.name ?? "",
@@ -89,11 +77,12 @@ export async function PUT(
       });
     }
 
-    return tx.colourSystem.findUnique({
+    const result = await prisma.colourSystem.findUnique({
       where: { id: cs.id },
       include: { palettes: { include: { colours: true }, orderBy: { order: "asc" } } },
     });
-  });
-
-  return NextResponse.json(result);
+    return NextResponse.json(result);
+  } catch (err) {
+    return NextResponse.json({ error: String(err) }, { status: 500 });
+  }
 }

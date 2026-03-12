@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { requireSession } from "@/lib/auth/session";
 
+export const runtime = "nodejs";
+
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ brandId: string }> }
@@ -27,18 +29,22 @@ export async function PATCH(
   const { error } = await requireSession();
   if (error) return error;
 
-  const { brandId } = await params;
-  const body = await req.json();
+  try {
+    const { brandId } = await params;
+    const body = await req.json();
 
-  const brand = await prisma.brand.update({
-    where: { id: brandId },
-    data: {
-      ...(body.name && { name: body.name }),
-      ...(body.description !== undefined && { description: body.description }),
-      ...(body.status && { status: body.status }),
-    },
-    include: { client: true },
-  });
+    const brand = await prisma.brand.update({
+      where: { id: brandId },
+      data: {
+        ...(body.name && { name: body.name }),
+        ...(body.description !== undefined && { description: body.description }),
+        ...(body.status && { status: body.status }),
+      },
+      include: { client: true },
+    });
 
-  return NextResponse.json(brand);
+    return NextResponse.json(brand);
+  } catch (err) {
+    return NextResponse.json({ error: String(err) }, { status: 500 });
+  }
 }
