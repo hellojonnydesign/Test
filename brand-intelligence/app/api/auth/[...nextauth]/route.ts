@@ -19,5 +19,18 @@ export async function POST(
   context: { params: Promise<{ nextauth: string[] }> }
 ) {
   const params = await context.params;
-  return handler(request, { params });
+
+  // Next.js 16 may deliver the request with body already consumed or null.
+  // Pre-read and re-inject so next-auth's getBody() can always read it.
+  const bodyText = await request.text().catch(() => "");
+  const freshReq = new Request(request.url, {
+    method: "POST",
+    headers: request.headers,
+    body: bodyText,
+  }) as unknown as NextRequest;
+
+  // next-auth needs req.nextUrl for URL parsing
+  Object.defineProperty(freshReq, "nextUrl", { value: request.nextUrl });
+
+  return handler(freshReq, { params });
 }
