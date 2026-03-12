@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { Plus, X, Upload } from "lucide-react";
+import { Plus, X } from "lucide-react";
+import { UploadZone } from "@/components/ui/upload-zone";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -52,6 +53,7 @@ export default function MotionPage() {
     { id: "3", name: "Slow", value: "500ms", use: "Page transitions, complex animations" },
     { id: "4", name: "Deliberate", value: "800ms", use: "Hero animations, brand moments" },
   ]);
+  const [referenceUrls, setReferenceUrls] = useState<string[]>([]);
   const [doItems, setDoItems] = useState<string[]>([""]);
   const [dontItems, setDontItems] = useState<string[]>([""]);
   const [isSaving, setIsSaving] = useState(false);
@@ -68,6 +70,7 @@ export default function MotionPage() {
         if (data.transitionTypes) setSelectedTransitions(data.transitionTypes as string[]);
         if (data.easingCurves) setEasingCurves(data.easingCurves as EasingCurve[]);
         if (data.durationTokens) setDurations(data.durationTokens as DurationToken[]);
+        setReferenceUrls(data.referenceUrls ?? []);
         setDoItems(data.doList?.length ? data.doList : [""]);
         setDontItems(data.dontList?.length ? data.dontList : [""]);
       })
@@ -83,6 +86,7 @@ export default function MotionPage() {
         principles, character, logoAnimation, typographyAnim,
         transitionTypes: selectedTransitions,
         easingCurves, durationTokens: durations,
+        referenceUrls,
         doList: doItems.filter(Boolean),
         dontList: dontItems.filter(Boolean),
       }),
@@ -302,10 +306,31 @@ export default function MotionPage() {
           <CardDescription>Upload MP4, GIF, or Lottie files that demonstrate approved motion.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-[var(--border)] bg-[var(--muted)] p-10 hover:bg-[var(--accent)] transition-colors">
-            <Upload className="h-6 w-6 text-[var(--muted-foreground)]" />
-            <p className="mt-2 text-sm text-[var(--muted-foreground)]">Upload motion reference files</p>
-            <p className="text-xs text-[var(--muted-foreground)]">MP4, GIF, Lottie JSON</p>
+          <div className="space-y-3">
+            {referenceUrls.map((url, i) => (
+              <UploadZone
+                key={i}
+                value={url}
+                onUpload={(newUrl) => {
+                  const updated = [...referenceUrls];
+                  updated[i] = newUrl;
+                  setReferenceUrls(updated);
+                }}
+                onRemove={() => setReferenceUrls(referenceUrls.filter((_, idx) => idx !== i))}
+                accept=".mp4,.gif,.json,.mov"
+                folder="brand-motion"
+                className="h-20"
+                previewType="video"
+              />
+            ))}
+            <UploadZone
+              onUpload={(url) => setReferenceUrls([...referenceUrls, url])}
+              accept=".mp4,.gif,.json,.mov"
+              folder="brand-motion"
+              className="h-20"
+              previewType="video"
+              label="Upload MP4, GIF or Lottie"
+            />
           </div>
         </CardContent>
       </Card>

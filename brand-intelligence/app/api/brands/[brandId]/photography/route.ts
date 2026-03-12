@@ -37,6 +37,7 @@ export async function PUT(
       postProcessing: body.postProcessing ?? null,
       doList: body.doList ?? [],
       dontList: body.dontList ?? [],
+      moodboardUrls: body.moodboardUrls ?? [],
     },
     update: {
       style: body.style ?? null,
@@ -48,6 +49,7 @@ export async function PUT(
       postProcessing: body.postProcessing ?? null,
       doList: body.doList ?? [],
       dontList: body.dontList ?? [],
+      moodboardUrls: body.moodboardUrls ?? [],
     },
   });
 

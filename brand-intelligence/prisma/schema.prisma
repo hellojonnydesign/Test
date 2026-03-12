@@ -346,6 +346,7 @@ model Illustration {
   perspective        String?
   doList             String[]
   dontList           String[]
+  referenceUrls      String[]
   referenceAssets    IllustrationAsset[]
   notes              String?   @db.Text
 
@@ -379,6 +380,7 @@ model Motion {
   typographyAnim  String?   @db.Text
   doList          String[]
   dontList        String[]
+  referenceUrls   String[]
   referenceAssets MotionAsset[]
   notes           String?   @db.Text
 
@@ -412,6 +414,7 @@ model Iconography {
   opticalSizing String?   @db.Text
   doList        String[]
   dontList      String[]
+  iconUrls      String[]
   assets        IconAsset[]
   notes         String?   @db.Text
 

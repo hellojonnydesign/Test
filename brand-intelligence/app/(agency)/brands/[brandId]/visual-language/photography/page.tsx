@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { Plus, X, Upload } from "lucide-react";
+import { Plus, X } from "lucide-react";
+import { UploadZone } from "@/components/ui/upload-zone";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -35,6 +36,7 @@ export default function PhotographyPage() {
   const [lighting, setLighting] = useState<string[]>([]);
   const [subjects, setSubjects] = useState<string[]>([]);
   const [composition, setComposition] = useState("");
+  const [moodboardUrls, setMoodboardUrls] = useState<string[]>([]);
   const [doItems, setDoItems] = useState<string[]>([""]);
   const [dontItems, setDontItems] = useState<string[]>([""]);
   const [isSaving, setIsSaving] = useState(false);
@@ -51,6 +53,7 @@ export default function PhotographyPage() {
         setLighting((data.lighting as { value?: string[] } | null)?.value ?? []);
         setSubjects((data.subjects as { value?: string[] } | null)?.value ?? []);
         setComposition((data.composition as { value?: string } | null)?.value ?? "");
+        setMoodboardUrls(data.moodboardUrls ?? []);
         setDoItems(data.doList?.length ? data.doList : [""]);
         setDontItems(data.dontList?.length ? data.dontList : [""]);
       })
@@ -65,6 +68,7 @@ export default function PhotographyPage() {
       body: JSON.stringify({
         style, mood, colourTreatment, postProcessing,
         lighting, subjects, composition,
+        moodboardUrls,
         doList: doItems.filter(Boolean),
         dontList: dontItems.filter(Boolean),
       }),
@@ -335,13 +339,24 @@ export default function PhotographyPage() {
         <CardContent>
           <div className="grid grid-cols-4 gap-3">
             {[...Array(4)].map((_, i) => (
-              <div
+              <UploadZone
                 key={i}
-                className="aspect-square cursor-pointer rounded-lg border border-dashed border-[var(--border)] bg-[var(--muted)] flex flex-col items-center justify-center hover:bg-[var(--accent)] transition-colors"
-              >
-                <Upload className="h-5 w-5 text-[var(--muted-foreground)]" />
-                <span className="mt-1.5 text-xs text-[var(--muted-foreground)]">Upload</span>
-              </div>
+                value={moodboardUrls[i]}
+                onUpload={(url) => {
+                  const updated = [...moodboardUrls];
+                  updated[i] = url;
+                  setMoodboardUrls(updated);
+                }}
+                onRemove={() => {
+                  const updated = [...moodboardUrls];
+                  updated.splice(i, 1);
+                  setMoodboardUrls(updated);
+                }}
+                accept="image/*"
+                folder="brand-photography"
+                className="aspect-square"
+                previewType="image"
+              />
             ))}
           </div>
         </CardContent>

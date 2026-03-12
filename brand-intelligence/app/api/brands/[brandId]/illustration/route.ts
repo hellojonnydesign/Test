@@ -37,6 +37,7 @@ export async function PUT(
       perspective: body.perspective ?? null,
       doList: body.doList ?? [],
       dontList: body.dontList ?? [],
+      referenceUrls: body.referenceUrls ?? [],
     },
     update: {
       style: body.style ?? null,
@@ -48,6 +49,7 @@ export async function PUT(
       perspective: body.perspective ?? null,
       doList: body.doList ?? [],
       dontList: body.dontList ?? [],
+      referenceUrls: body.referenceUrls ?? [],
     },
   });
 

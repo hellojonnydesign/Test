@@ -12,6 +12,14 @@ export async function POST(
 
   const { brandId } = await params;
 
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey || apiKey === "your-anthropic-api-key") {
+    return NextResponse.json(
+      { error: "ANTHROPIC_API_KEY is not configured. Add your key to .env to enable AI generation." },
+      { status: 503 }
+    );
+  }
+
   try {
     const brand = await prisma.brand.findUnique({
       where: { id: brandId },

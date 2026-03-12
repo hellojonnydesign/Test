@@ -36,6 +36,7 @@ export async function PUT(
       opticalSizing: body.opticalSizing ?? null,
       doList: body.doList ?? [],
       dontList: body.dontList ?? [],
+      iconUrls: body.iconUrls ?? [],
     },
     update: {
       style: body.style ?? null,
@@ -46,6 +47,7 @@ export async function PUT(
       opticalSizing: body.opticalSizing ?? null,
       doList: body.doList ?? [],
       dontList: body.dontList ?? [],
+      iconUrls: body.iconUrls ?? [],
     },
   });
 
