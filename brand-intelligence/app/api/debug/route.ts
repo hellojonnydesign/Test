@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { Pool } from "pg";
+import { prisma } from "@/lib/db/prisma";
 
 export async function GET() {
   const checks: Record<string, unknown> = {};
@@ -14,25 +15,30 @@ export async function GET() {
     NEXTAUTH_URL: process.env.NEXTAUTH_URL ?? "NOT SET",
   };
 
-  // Test with plain pg Pool (same as seed file)
+  // Test 1: plain pg Pool
   try {
     const pool = new Pool({ connectionString: dbUrl, ssl: { rejectUnauthorized: false } });
-    const result = await pool.query(
-      `SELECT id, email, role, "passwordHash" FROM "User" WHERE email = $1`,
-      ["jonnyspinder@gmail.com"]
-    );
+    const result = await pool.query(`SELECT email FROM "User" WHERE email = $1`, ["jonnyspinder@gmail.com"]);
     await pool.end();
-    const user = result.rows[0];
-    checks.db = {
+    checks.pg = { connected: true, userFound: result.rows.length > 0 };
+  } catch (err) {
+    checks.pg = { connected: false, error: String(err) };
+  }
+
+  // Test 2: PrismaNeonHttp singleton (what auth uses)
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email: "jonnyspinder@gmail.com" },
+      select: { email: true, passwordHash: true },
+    });
+    checks.prisma = {
       connected: true,
       userFound: !!user,
-      userEmail: user?.email ?? null,
-      userRole: user?.role ?? null,
       hasPasswordHash: !!user?.passwordHash,
       passwordHashPrefix: user?.passwordHash?.slice(0, 7) ?? null,
     };
   } catch (err) {
-    checks.db = { connected: false, error: String(err) };
+    checks.prisma = { connected: false, error: String(err) };
   }
 
   return NextResponse.json(checks);
