@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
+import { requireSession } from "@/lib/auth/session";
 
 export async function GET() {
+  const { error } = await requireSession();
+  if (error) return error;
   const clients = await prisma.client.findMany({
     include: { _count: { select: { brands: true } } },
     orderBy: { createdAt: "desc" },
@@ -10,6 +13,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const { error } = await requireSession();
+  if (error) return error;
   const body = await req.json();
 
   if (!body.name || !body.agencyId) {

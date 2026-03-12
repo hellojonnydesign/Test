@@ -1,7 +1,14 @@
 import Anthropic from "@anthropic-ai/sdk";
 
+const key = process.env.ANTHROPIC_API_KEY;
+if (!key || key === "your-anthropic-api-key") {
+  console.warn(
+    "[brand-intelligence] ANTHROPIC_API_KEY is not set. AI features (generate, import) will fail until you add a real key to .env"
+  );
+}
+
 export const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
+  apiKey: key,
 });
 
 export async function extractBrandGuidelinesFromText(

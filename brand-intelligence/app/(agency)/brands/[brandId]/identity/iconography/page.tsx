@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { Plus, X, Upload } from "lucide-react";
+import { Plus, X } from "lucide-react";
+import { UploadZone } from "@/components/ui/upload-zone";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,7 @@ export default function IconographyPage() {
   const [cornerRadius, setCornerRadius] = useState("");
   const [colourUsage, setColourUsage] = useState("");
   const [opticalSizing, setOpticalSizing] = useState("");
+  const [iconUrls, setIconUrls] = useState<string[]>([]);
   const [doList, setDoList] = useState<string[]>([""]);
   const [dontList, setDontList] = useState<string[]>([""]);
   const [isSaving, setIsSaving] = useState(false);
@@ -37,6 +39,7 @@ export default function IconographyPage() {
         setCornerRadius(data.cornerRadius ?? "");
         setColourUsage(data.colourUsage ?? "");
         setOpticalSizing(data.opticalSizing ?? "");
+        setIconUrls(data.iconUrls ?? []);
         setDoList(data.doList?.length ? data.doList : [""]);
         setDontList(data.dontList?.length ? data.dontList : [""]);
       })
@@ -51,6 +54,7 @@ export default function IconographyPage() {
       body: JSON.stringify({
         style, gridSize, strokeWeight, cornerRadius,
         colourUsage, opticalSizing,
+        iconUrls,
         doList: doList.filter(Boolean),
         dontList: dontList.filter(Boolean),
       }),
@@ -121,10 +125,25 @@ export default function IconographyPage() {
         <CardContent>
           <div className="grid grid-cols-6 gap-3">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="aspect-square cursor-pointer rounded-lg border border-dashed border-[var(--border)] bg-[var(--muted)] flex flex-col items-center justify-center hover:bg-[var(--accent)] transition-colors">
-                <Upload className="h-4 w-4 text-[var(--muted-foreground)]" />
-                <span className="mt-1 text-xs text-[var(--muted-foreground)]">SVG</span>
-              </div>
+              <UploadZone
+                key={i}
+                value={iconUrls[i]}
+                onUpload={(url) => {
+                  const updated = [...iconUrls];
+                  updated[i] = url;
+                  setIconUrls(updated);
+                }}
+                onRemove={() => {
+                  const updated = [...iconUrls];
+                  updated[i] = "";
+                  setIconUrls(updated.filter(Boolean).concat(Array(6).fill("")).slice(0, 6));
+                }}
+                accept=".svg,.png"
+                folder="brand-icons"
+                className="aspect-square"
+                previewType="icon"
+                label="SVG"
+              />
             ))}
           </div>
         </CardContent>

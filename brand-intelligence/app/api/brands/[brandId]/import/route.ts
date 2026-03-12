@@ -1,12 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { extractBrandGuidelinesFromText } from "@/lib/ai/claude";
+import { requireSession } from "@/lib/auth/session";
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ brandId: string }> }
 ) {
+  const { error } = await requireSession();
+  if (error) return error;
+
   const { brandId } = await params;
+
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey || apiKey === "your-anthropic-api-key") {
+    return NextResponse.json(
+      { error: "ANTHROPIC_API_KEY is not configured. Add your key to .env to enable AI import." },
+      { status: 503 }
+    );
+  }
 
   try {
     const formData = await req.formData();
@@ -45,8 +58,9 @@ export async function POST(
     let extractedText = "";
     try {
       // Dynamic import to avoid build issues in environments without native modules
-      const pdfParse = await import("pdf-parse");
-      const pdfData = await pdfParse.default(buffer);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const pdfParse = await import("pdf-parse") as any;
+      const pdfData = await (pdfParse.default ?? pdfParse)(buffer);
       extractedText = pdfData.text;
     } catch {
       // Fallback: treat as plain text if pdf-parse fails
@@ -72,7 +86,7 @@ export async function POST(
 
     await prisma.guidelineImport.update({
       where: { id: importRecord.id },
-      data: { status: "COMPLETE", extractedData: extracted },
+      data: { status: "COMPLETE", extractedData: extracted as Prisma.InputJsonValue },
     });
 
     return NextResponse.json({

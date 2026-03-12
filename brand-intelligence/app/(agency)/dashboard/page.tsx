@@ -5,6 +5,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { prisma } from "@/lib/db/prisma";
 
+export const dynamic = "force-dynamic";
+
 const statusVariant: Record<string, "default" | "success" | "warning" | "secondary"> = {
   COMPLETE: "success",
   IN_PROGRESS: "warning",

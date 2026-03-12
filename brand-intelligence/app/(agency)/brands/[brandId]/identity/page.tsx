@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { Upload, Plus, Trash2, Info } from "lucide-react";
+import { Plus, Trash2, Info } from "lucide-react";
+import { UploadZone } from "@/components/ui/upload-zone";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -121,10 +122,15 @@ export default function LogoSystemPage() {
               >
                 {/* Upload area */}
                 <div className="col-span-2">
-                  <div className="flex h-20 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-[var(--border)] bg-[var(--muted)] hover:bg-[var(--accent)] transition-colors">
-                    <Upload className="h-5 w-5 text-[var(--muted-foreground)]" />
-                    <span className="mt-1 text-xs text-[var(--muted-foreground)]">Upload</span>
-                  </div>
+                  <UploadZone
+                    value={asset.fileUrl || undefined}
+                    onUpload={(url) => updateAsset(asset.id, "fileUrl", url)}
+                    onRemove={() => updateAsset(asset.id, "fileUrl", "")}
+                    accept=".svg,.png,.jpg,.jpeg,.eps,.pdf"
+                    folder="brand-logos"
+                    className="h-20"
+                    previewType="icon"
+                  />
                 </div>
 
                 <div className="col-span-9 grid grid-cols-2 gap-3">

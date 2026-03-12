@@ -1,12 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { generateBrandConfig } from "@/lib/ai/claude";
+import { requireSession } from "@/lib/auth/session";
 
 export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ brandId: string }> }
 ) {
+  const { error } = await requireSession();
+  if (error) return error;
+
   const { brandId } = await params;
+
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey || apiKey === "your-anthropic-api-key") {
+    return NextResponse.json(
+      { error: "ANTHROPIC_API_KEY is not configured. Add your key to .env to enable AI generation." },
+      { status: 503 }
+    );
+  }
 
   try {
     const brand = await prisma.brand.findUnique({
@@ -46,7 +58,7 @@ export async function POST(
     await prisma.brand.update({
       where: { id: brandId },
       data: {
-        brandConfig: config,
+        brandConfig: config as object,
         configVersion: { increment: 1 },
       },
     });

@@ -1,9 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
+import { requireSession } from "@/lib/auth/session";
 
 export async function GET() {
+  const { error } = await requireSession();
+  if (error) return error;
   const brands = await prisma.brand.findMany({
-    include: { client: true },
+    include: {
+      client: true,
+      logoSystem: true,
+      colourSystem: true,
+      typography: true,
+      photography: true,
+      illustration: true,
+      motion: true,
+      iconography: true,
+      gridLayout: true,
+      pattern: true,
+      brandVoice: true,
+    },
     orderBy: { updatedAt: "desc" },
   });
 
@@ -28,6 +43,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const { error } = await requireSession();
+  if (error) return error;
   const body = await req.json();
 
   if (!body.name || !body.clientId) {

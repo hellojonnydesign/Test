@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
+import { requireSession } from "@/lib/auth/session";
 
 function hexToRgb(hex: string) {
   const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -12,6 +13,9 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ brandId: string }> }
 ) {
+  const { error } = await requireSession();
+  if (error) return error;
+
   const { brandId } = await params;
   const data = await prisma.colourSystem.findUnique({
     where: { brandId },
@@ -24,6 +28,9 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ brandId: string }> }
 ) {
+  const { error } = await requireSession();
+  if (error) return error;
+
   const { brandId } = await params;
   const body = await req.json();
 

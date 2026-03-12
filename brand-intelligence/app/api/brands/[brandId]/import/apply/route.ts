@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
+import { requireSession } from "@/lib/auth/session";
 
 type Extracted = Record<string, unknown>;
 
@@ -23,6 +25,9 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ brandId: string }> }
 ) {
+  const { error } = await requireSession();
+  if (error) return error;
+
   const { brandId } = await params;
   const { extracted } = (await req.json()) as { extracted: Extracted };
 
@@ -236,18 +241,18 @@ export async function POST(
           brandId,
           principles: str(mo.principles),
           character: str(mo.character),
-          easingCurves: mo.easingCurves ?? undefined,
-          durationTokens: mo.durationTokens ?? undefined,
-          transitionTypes: mo.transitionTypes ?? undefined,
+          easingCurves: mo.easingCurves as Prisma.InputJsonValue ?? undefined,
+          durationTokens: mo.durationTokens as Prisma.InputJsonValue ?? undefined,
+          transitionTypes: mo.transitionTypes as Prisma.InputJsonValue ?? undefined,
           doList: strArray(mo.doList),
           dontList: strArray(mo.dontList),
         },
         update: {
           ...(mo.principles !== undefined && { principles: str(mo.principles) }),
           ...(mo.character !== undefined && { character: str(mo.character) }),
-          ...(mo.easingCurves !== undefined && { easingCurves: mo.easingCurves }),
-          ...(mo.durationTokens !== undefined && { durationTokens: mo.durationTokens }),
-          ...(mo.transitionTypes !== undefined && { transitionTypes: mo.transitionTypes }),
+          ...(mo.easingCurves !== undefined && { easingCurves: mo.easingCurves as Prisma.InputJsonValue }),
+          ...(mo.durationTokens !== undefined && { durationTokens: mo.durationTokens as Prisma.InputJsonValue }),
+          ...(mo.transitionTypes !== undefined && { transitionTypes: mo.transitionTypes as Prisma.InputJsonValue }),
           ...(mo.doList !== undefined && { doList: strArray(mo.doList) }),
           ...(mo.dontList !== undefined && { dontList: strArray(mo.dontList) }),
         },
@@ -291,13 +296,13 @@ export async function POST(
         where: { brandId },
         create: {
           brandId,
-          gridSystem: gl.gridSystem ?? gl,
+          gridSystem: (gl.gridSystem ?? gl) as Prisma.InputJsonValue,
           layoutPrinciples: str(gl.layoutPrinciples),
           composition: str(gl.composition),
           safeZones: str(gl.safeZones),
         },
         update: {
-          ...(gl.gridSystem !== undefined && { gridSystem: gl.gridSystem }),
+          ...(gl.gridSystem !== undefined && { gridSystem: gl.gridSystem as Prisma.InputJsonValue }),
           ...(gl.layoutPrinciples !== undefined && { layoutPrinciples: str(gl.layoutPrinciples) }),
           ...(gl.composition !== undefined && { composition: str(gl.composition) }),
           ...(gl.safeZones !== undefined && { safeZones: str(gl.safeZones) }),
@@ -335,19 +340,19 @@ export async function POST(
         where: { brandId },
         create: {
           brandId,
-          personality: bv.personality ?? undefined,
-          toneVariants: bv.toneVariants ?? undefined,
-          vocabulary: bv.vocabulary ?? undefined,
-          exampleCopy: bv.exampleCopy ?? undefined,
+          personality: bv.personality as Prisma.InputJsonValue ?? undefined,
+          toneVariants: bv.toneVariants as Prisma.InputJsonValue ?? undefined,
+          vocabulary: bv.vocabulary as Prisma.InputJsonValue ?? undefined,
+          exampleCopy: bv.exampleCopy as Prisma.InputJsonValue ?? undefined,
           doList: strArray(bv.doList),
           dontList: strArray(bv.dontList),
           audienceNotes: str(bv.audienceNotes),
         },
         update: {
-          ...(bv.personality !== undefined && { personality: bv.personality }),
-          ...(bv.toneVariants !== undefined && { toneVariants: bv.toneVariants }),
-          ...(bv.vocabulary !== undefined && { vocabulary: bv.vocabulary }),
-          ...(bv.exampleCopy !== undefined && { exampleCopy: bv.exampleCopy }),
+          ...(bv.personality !== undefined && { personality: bv.personality as Prisma.InputJsonValue }),
+          ...(bv.toneVariants !== undefined && { toneVariants: bv.toneVariants as Prisma.InputJsonValue }),
+          ...(bv.vocabulary !== undefined && { vocabulary: bv.vocabulary as Prisma.InputJsonValue }),
+          ...(bv.exampleCopy !== undefined && { exampleCopy: bv.exampleCopy as Prisma.InputJsonValue }),
           ...(bv.doList !== undefined && { doList: strArray(bv.doList) }),
           ...(bv.dontList !== undefined && { dontList: strArray(bv.dontList) }),
           ...(bv.audienceNotes !== undefined && { audienceNotes: str(bv.audienceNotes) }),
