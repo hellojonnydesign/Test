@@ -1,7 +1,6 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Layers, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -23,16 +22,16 @@ function LoginForm() {
     setLoading(true);
     setError("");
 
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
     });
 
     setLoading(false);
 
-    if (result?.error) {
-      setError(`Error: ${result.error} (ok:${result.ok}, status:${result.status})`);
+    if (!res.ok) {
+      setError("Invalid email or password");
     } else {
       router.push(callbackUrl);
       router.refresh();
