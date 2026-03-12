@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db/prisma";
+import { Pool, neonConfig } from "@neondatabase/serverless";
+import { PrismaNeon } from "@prisma/adapter-neon";
+import { PrismaClient } from "@prisma/client";
+import ws from "ws";
 
 export async function GET() {
   const checks: Record<string, unknown> = {};
 
-  // Check env vars (values hidden, just presence)
+  // Check env vars
   const dbUrl = process.env.DATABASE_URL ?? "";
   let dbHost = "NOT SET";
   try { dbHost = new URL(dbUrl).hostname; } catch {}
@@ -17,12 +20,20 @@ export async function GET() {
     NEXTAUTH_URL: process.env.NEXTAUTH_URL ?? "NOT SET",
   };
 
-  // Check DB connection and user lookup
+  // Create a fresh Prisma client directly in this route (bypassing prisma.ts singleton)
   try {
-    const user = await prisma.user.findUnique({
+    neonConfig.webSocketConstructor = ws;
+    const pool = new Pool({ connectionString: dbUrl });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const adapter = new PrismaNeon(pool as any);
+    const client = new PrismaClient({ adapter });
+
+    const user = await client.user.findUnique({
       where: { email: "jonnyspinder@gmail.com" },
       select: { id: true, email: true, role: true, passwordHash: true },
     });
+
+    await client.$disconnect();
 
     checks.db = {
       connected: true,
