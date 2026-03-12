@@ -16,6 +16,6 @@ export const config = {
      * - /favicon.ico
      * - /portal (client-facing, public access)
      */
-    "/((?!login|api/auth|_next/static|_next/image|favicon\\.ico|portal).*)",
+    "/((?!login|api/auth|api/debug|_next/static|_next/image|favicon\\.ico|portal).*)",
   ],
 };
