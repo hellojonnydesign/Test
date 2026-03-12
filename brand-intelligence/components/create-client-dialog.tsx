@@ -26,11 +26,15 @@ export function CreateClientDialog({ agencyId }: { agencyId: string }) {
     setIsCreating(true);
     setError("");
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+
     try {
       const res = await fetch("/api/clients", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: name.trim(), agencyId }),
+        signal: controller.signal,
       });
 
       if (res.ok) {
@@ -41,9 +45,14 @@ export function CreateClientDialog({ agencyId }: { agencyId: string }) {
         const data = await res.json().catch(() => ({}));
         setError(data.error ?? `Error ${res.status}`);
       }
-    } catch {
-      setError("Network error — please try again");
+    } catch (e) {
+      setError(
+        e instanceof Error && e.name === "AbortError"
+          ? "Request timed out — please try again"
+          : "Network error — please try again"
+      );
     } finally {
+      clearTimeout(timeout);
       setIsCreating(false);
     }
   }
