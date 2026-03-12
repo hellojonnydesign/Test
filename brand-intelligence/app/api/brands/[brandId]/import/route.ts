@@ -51,7 +51,12 @@ export async function POST(
     const brands = await sql`SELECT name FROM "Brand" WHERE id = ${brandId} LIMIT 1`;
     const brandName = (brands[0]?.name as string) ?? "Unknown Brand";
 
-    const extracted = await extractBrandGuidelinesFromText(text, brandName);
+    const extracted = await Promise.race([
+      extractBrandGuidelinesFromText(text, brandName),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Claude API timed out after 8s — check ANTHROPIC_API_KEY is valid in Vercel env vars, or upgrade to Vercel Pro for longer function execution.")), 8000)
+      ),
+    ]);
 
     // Record the import (best-effort — don't fail if this errors)
     try {
