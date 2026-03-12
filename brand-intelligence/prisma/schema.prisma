@@ -1,0 +1,502 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Auth ────────────────────────────────────────────────────────────────────
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  role          UserRole  @default(CLIENT)
+  agencyId      String?
+  agency        Agency?   @relation(fields: [agencyId], references: [id])
+  accounts      Account[]
+  sessions      Session[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+enum UserRole {
+  AGENCY_ADMIN
+  AGENCY_MEMBER
+  CLIENT
+}
+
+// ─── Agency & Clients ────────────────────────────────────────────────────────
+
+model Agency {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  logoUrl   String?
+  users     User[]
+  clients   Client[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Client {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  logoUrl   String?
+  agencyId  String
+  agency    Agency   @relation(fields: [agencyId], references: [id])
+  brands    Brand[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── Brand Workspace ─────────────────────────────────────────────────────────
+
+model Brand {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id])
+
+  logoSystem    LogoSystem?
+  colourSystem  ColourSystem?
+  typography    Typography?
+  photography   Photography?
+  illustration  Illustration?
+  motion        Motion?
+  iconography   Iconography?
+  gridLayout    GridLayout?
+  pattern       Pattern?
+  brandVoice    BrandVoice?
+
+  brandConfig      Json?
+  configVersion    Int      @default(0)
+  guidelineImports GuidelineImport[]
+
+  status    BrandStatus @default(DRAFT)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+}
+
+enum BrandStatus {
+  DRAFT
+  IN_PROGRESS
+  COMPLETE
+  ARCHIVED
+}
+
+// ─── Guideline Import ─────────────────────────────────────────────────────────
+
+model GuidelineImport {
+  id            String       @id @default(cuid())
+  brandId       String
+  brand         Brand        @relation(fields: [brandId], references: [id])
+  fileUrl       String
+  fileName      String
+  fileSize      Int
+  status        ImportStatus @default(PENDING)
+  extractedData Json?
+  error         String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+
+enum ImportStatus {
+  PENDING
+  PROCESSING
+  COMPLETE
+  FAILED
+}
+
+// ─── Logo System ─────────────────────────────────────────────────────────────
+
+model LogoSystem {
+  id      String @id @default(cuid())
+  brandId String @unique
+  brand   Brand  @relation(fields: [brandId], references: [id])
+
+  assets          LogoAsset[]
+  clearSpaceRule  String?
+  minimumSizePx   Int?
+  minimumSizeMm   Float?
+  usageRules      String?   @db.Text
+  restrictions    String?   @db.Text
+  backgroundUsage String?   @db.Text
+  notes           String?   @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model LogoAsset {
+  id           String     @id @default(cuid())
+  logoSystemId String
+  logoSystem   LogoSystem @relation(fields: [logoSystemId], references: [id])
+
+  name       String
+  type       LogoType
+  variant    LogoVariant
+  fileUrl    String
+  svgContent String?     @db.Text
+  format     String
+  width      Int?
+  height     Int?
+  usageNote  String?
+  createdAt  DateTime    @default(now())
+}
+
+enum LogoType {
+  PRIMARY
+  SECONDARY
+  WORDMARK
+  ICON
+  MONOGRAM
+  LOCKUP
+  STACKED
+  HORIZONTAL
+}
+
+enum LogoVariant {
+  FULL_COLOUR
+  MONO_BLACK
+  MONO_WHITE
+  REVERSED
+  SINGLE_COLOUR
+  OUTLINE
+}
+
+// ─── Colour System ────────────────────────────────────────────────────────────
+
+model ColourSystem {
+  id      String @id @default(cuid())
+  brandId String @unique
+  brand   Brand  @relation(fields: [brandId], references: [id])
+
+  palettes           Palette[]
+  usageRules         String?   @db.Text
+  accessibilityNotes String?   @db.Text
+  darkModeGuidance   String?   @db.Text
+  notes              String?   @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Palette {
+  id             String       @id @default(cuid())
+  colourSystemId String
+  colourSystem   ColourSystem @relation(fields: [colourSystemId], references: [id])
+
+  name    String
+  role    String?
+  colours Colour[]
+  order   Int      @default(0)
+}
+
+model Colour {
+  id        String  @id @default(cuid())
+  paletteId String
+  palette   Palette @relation(fields: [paletteId], references: [id])
+
+  name      String
+  hex       String
+  rgb       Json
+  cmyk      Json?
+  hsl       Json?
+  pantone   String?
+  usageNote String?
+  isPrimary Boolean @default(false)
+  order     Int     @default(0)
+}
+
+// ─── Typography ───────────────────────────────────────────────────────────────
+
+model Typography {
+  id      String @id @default(cuid())
+  brandId String @unique
+  brand   Brand  @relation(fields: [brandId], references: [id])
+
+  typefaces        Typeface[]
+  scaleRules       Json?
+  hierarchyRules   String?   @db.Text
+  usageGuidelines  String?   @db.Text
+  pairingRules     String?   @db.Text
+  notes            String?   @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Typeface {
+  id           String     @id @default(cuid())
+  typographyId String
+  typography   Typography @relation(fields: [typographyId], references: [id])
+
+  name          String
+  role          TypefaceRole
+  weights       String[]
+  source        String?
+  fontFileUrl   String?
+  licenseNote   String?
+  usageRules    String?      @db.Text
+  fallbackStack String?
+  specimens     Json?
+  order         Int          @default(0)
+}
+
+enum TypefaceRole {
+  PRIMARY
+  SECONDARY
+  DISPLAY
+  BODY
+  ACCENT
+  MONOSPACE
+  EDITORIAL
+}
+
+// ─── Photography ─────────────────────────────────────────────────────────────
+
+model Photography {
+  id      String @id @default(cuid())
+  brandId String @unique
+  brand   Brand  @relation(fields: [brandId], references: [id])
+
+  style            String?
+  mood             String?   @db.Text
+  composition      Json?
+  colourTreatment  Json?
+  lighting         Json?
+  subjects         Json?
+  postProcessing   String?   @db.Text
+  doList           String[]
+  dontList         String[]
+  moodboardUrls    String[]
+  referenceAssets  PhotographyAsset[]
+  notes            String?   @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PhotographyAsset {
+  id            String      @id @default(cuid())
+  photographyId String
+  photography   Photography @relation(fields: [photographyId], references: [id])
+
+  fileUrl   String
+  caption   String?
+  tags      String[]
+  isHero    Boolean @default(false)
+}
+
+// ─── Illustration ─────────────────────────────────────────────────────────────
+
+model Illustration {
+  id      String @id @default(cuid())
+  brandId String @unique
+  brand   Brand  @relation(fields: [brandId], references: [id])
+
+  style              String?
+  technique          String?
+  lineWeight         String?
+  colourPalette      String?
+  colourApplication  Json?
+  subjects           Json?
+  perspective        String?
+  doList             String[]
+  dontList           String[]
+  referenceAssets    IllustrationAsset[]
+  notes              String?   @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model IllustrationAsset {
+  id             String       @id @default(cuid())
+  illustrationId String
+  illustration   Illustration @relation(fields: [illustrationId], references: [id])
+
+  fileUrl   String
+  caption   String?
+  tags      String[]
+}
+
+// ─── Motion ───────────────────────────────────────────────────────────────────
+
+model Motion {
+  id      String @id @default(cuid())
+  brandId String @unique
+  brand   Brand  @relation(fields: [brandId], references: [id])
+
+  principles      String?   @db.Text
+  character       String?   @db.Text
+  easingCurves    Json?
+  durationTokens  Json?
+  transitionTypes Json?
+  logoAnimation   String?   @db.Text
+  typographyAnim  String?   @db.Text
+  doList          String[]
+  dontList        String[]
+  referenceAssets MotionAsset[]
+  notes           String?   @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model MotionAsset {
+  id       String @id @default(cuid())
+  motionId String
+  motion   Motion @relation(fields: [motionId], references: [id])
+
+  fileUrl   String
+  type      String
+  caption   String?
+  tags      String[]
+}
+
+// ─── Iconography ─────────────────────────────────────────────────────────────
+
+model Iconography {
+  id      String @id @default(cuid())
+  brandId String @unique
+  brand   Brand  @relation(fields: [brandId], references: [id])
+
+  style         String?
+  gridSize      Int?
+  strokeWeight  String?
+  cornerRadius  String?
+  colourUsage   String?   @db.Text
+  opticalSizing String?   @db.Text
+  doList        String[]
+  dontList      String[]
+  assets        IconAsset[]
+  notes         String?   @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model IconAsset {
+  id            String      @id @default(cuid())
+  iconographyId String
+  iconography   Iconography @relation(fields: [iconographyId], references: [id])
+
+  name       String
+  category   String?
+  fileUrl    String
+  svgContent String?  @db.Text
+  tags       String[]
+}
+
+// ─── Grid & Layout ────────────────────────────────────────────────────────────
+
+model GridLayout {
+  id      String @id @default(cuid())
+  brandId String @unique
+  brand   Brand  @relation(fields: [brandId], references: [id])
+
+  gridSystem        Json?
+  spacingScale      Json?
+  layoutPrinciples  String?   @db.Text
+  composition       String?   @db.Text
+  safeZones         String?   @db.Text
+  notes             String?   @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── Pattern & Texture ────────────────────────────────────────────────────────
+
+model Pattern {
+  id      String @id @default(cuid())
+  brandId String @unique
+  brand   Brand  @relation(fields: [brandId], references: [id])
+
+  graphicDevices  String?   @db.Text
+  patternStyle    String?
+  textureNotes    String?   @db.Text
+  usageRules      String?   @db.Text
+  colourVariants  Json?
+  assets          PatternAsset[]
+  notes           String?   @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PatternAsset {
+  id        String  @id @default(cuid())
+  patternId String
+  pattern   Pattern @relation(fields: [patternId], references: [id])
+
+  name      String
+  fileUrl   String
+  type      String
+  tags      String[]
+}
+
+// ─── Brand Voice ─────────────────────────────────────────────────────────────
+
+model BrandVoice {
+  id      String @id @default(cuid())
+  brandId String @unique
+  brand   Brand  @relation(fields: [brandId], references: [id])
+
+  personality        Json?
+  toneVariants       Json?
+  messagingHierarchy Json?
+  languageRules      Json?
+  vocabulary         Json?
+  doList             String[]
+  dontList           String[]
+  exampleCopy        Json?
+  audienceNotes      String?   @db.Text
+  notes              String?   @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
