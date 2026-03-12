@@ -26,22 +26,26 @@ export function CreateClientDialog({ agencyId }: { agencyId: string }) {
     setIsCreating(true);
     setError("");
 
-    const res = await fetch("/api/clients", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: name.trim(), agencyId }),
-    });
+    try {
+      const res = await fetch("/api/clients", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim(), agencyId }),
+      });
 
-    if (res.ok) {
-      setOpen(false);
-      setName("");
-      router.refresh();
-    } else {
-      const data = await res.json();
-      setError(data.error ?? "Failed to create client");
+      if (res.ok) {
+        setOpen(false);
+        setName("");
+        router.refresh();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? `Error ${res.status}`);
+      }
+    } catch {
+      setError("Network error — please try again");
+    } finally {
+      setIsCreating(false);
     }
-
-    setIsCreating(false);
   }
 
   return (

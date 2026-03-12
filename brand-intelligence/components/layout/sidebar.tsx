@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useSession, signOut } from "next-auth/react";
+import { signOut } from "next-auth/react";
 import {
   LayoutDashboard,
   Users,
@@ -38,11 +38,14 @@ function roleLabel(role?: string): string {
   }
 }
 
-export function Sidebar() {
-  const pathname = usePathname();
-  const { data: session } = useSession();
+type SidebarUser = {
+  name?: string;
+  email?: string;
+  role?: string;
+} | null;
 
-  const user = session?.user;
+export function Sidebar({ user }: { user: SidebarUser }) {
+  const pathname = usePathname();
 
   return (
     <aside className="flex h-screen w-60 flex-col border-r border-[var(--border)] bg-[var(--card)]">
@@ -85,7 +88,7 @@ export function Sidebar() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-medium truncate">
-              {user?.name || user?.email || "Loading..."}
+              {user?.name || user?.email || ""}
             </p>
             <p className="text-xs text-[var(--muted-foreground)] truncate">
               {roleLabel(user?.role)}
