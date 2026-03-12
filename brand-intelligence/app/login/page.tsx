@@ -31,7 +31,8 @@ function LoginForm() {
     setLoading(false);
 
     if (!res.ok) {
-      setError("Invalid email or password");
+      const data = await res.json().catch(() => null);
+      setError(data?.error ? `${data.error} (step:${data.step})` : `Error ${res.status}`);
     } else {
       router.push(callbackUrl);
       router.refresh();
