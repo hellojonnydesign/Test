@@ -54,8 +54,8 @@ export default function ImportPage() {
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
-    if (f.size > 20 * 1024 * 1024) {
-      setError("File is too large. Please use a PDF under 20MB.");
+    if (f.size > 4 * 1024 * 1024) {
+      setError(`File is ${(f.size / 1024 / 1024).toFixed(1)}MB — too large. Vercel limits uploads to 4MB. Try exporting a lower-resolution or text-only version of the PDF.`);
       setStatus("error");
       return;
     }
@@ -174,7 +174,7 @@ export default function ImportPage() {
                     <Upload className="h-8 w-8 text-[var(--muted-foreground)]" />
                     <p className="mt-3 font-medium text-sm">Drop your PDF here</p>
                     <p className="mt-1 text-xs text-[var(--muted-foreground)]">or click to browse</p>
-                    <p className="mt-3 text-xs text-[var(--muted-foreground)]">PDF up to 50MB</p>
+                    <p className="mt-3 text-xs text-[var(--muted-foreground)]">PDF up to 4MB · text-based (not scanned)</p>
                   </>
                 )}
                 <input
