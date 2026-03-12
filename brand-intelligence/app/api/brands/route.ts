@@ -6,7 +6,19 @@ export async function GET() {
   const { error } = await requireSession();
   if (error) return error;
   const brands = await prisma.brand.findMany({
-    include: { client: true },
+    include: {
+      client: true,
+      logoSystem: true,
+      colourSystem: true,
+      typography: true,
+      photography: true,
+      illustration: true,
+      motion: true,
+      iconography: true,
+      gridLayout: true,
+      pattern: true,
+      brandVoice: true,
+    },
     orderBy: { updatedAt: "desc" },
   });
 

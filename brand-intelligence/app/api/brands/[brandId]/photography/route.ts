@@ -24,16 +24,20 @@ export async function PUT(
   const { brandId } = await params;
   const body = await req.json();
 
+  const jsonFields = {
+    composition: body.composition ? { value: body.composition } : undefined,
+    colourTreatment: body.colourTreatment ? { value: body.colourTreatment } : undefined,
+    lighting: body.lighting ? { value: body.lighting } : undefined,
+    subjects: body.subjects ? { value: body.subjects } : undefined,
+  };
+
   const data = await prisma.photography.upsert({
     where: { brandId },
     create: {
       brandId,
       style: body.style ?? null,
       mood: body.mood ?? null,
-      composition: body.composition ? { value: body.composition } : null,
-      colourTreatment: body.colourTreatment ? { value: body.colourTreatment } : null,
-      lighting: body.lighting ? { value: body.lighting } : null,
-      subjects: body.subjects ? { value: body.subjects } : null,
+      ...jsonFields,
       postProcessing: body.postProcessing ?? null,
       doList: body.doList ?? [],
       dontList: body.dontList ?? [],
@@ -42,10 +46,7 @@ export async function PUT(
     update: {
       style: body.style ?? null,
       mood: body.mood ?? null,
-      composition: body.composition ? { value: body.composition } : null,
-      colourTreatment: body.colourTreatment ? { value: body.colourTreatment } : null,
-      lighting: body.lighting ? { value: body.lighting } : null,
-      subjects: body.subjects ? { value: body.subjects } : null,
+      ...jsonFields,
       postProcessing: body.postProcessing ?? null,
       doList: body.doList ?? [],
       dontList: body.dontList ?? [],

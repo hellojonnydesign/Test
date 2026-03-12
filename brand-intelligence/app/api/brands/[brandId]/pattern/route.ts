@@ -32,14 +32,14 @@ export async function PUT(
       patternStyle: body.patternStyle ?? null,
       textureNotes: body.textureNotes ?? null,
       usageRules: body.usageRules ?? null,
-      colourVariants: body.colourVariants ?? null,
+      colourVariants: body.colourVariants ?? undefined,
     },
     update: {
       graphicDevices: body.graphicDevices ?? null,
       patternStyle: body.patternStyle ?? null,
       textureNotes: body.textureNotes ?? null,
       usageRules: body.usageRules ?? null,
-      colourVariants: body.colourVariants ?? null,
+      colourVariants: body.colourVariants ?? undefined,
     },
   });
 

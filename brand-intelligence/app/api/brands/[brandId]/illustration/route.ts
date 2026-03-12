@@ -24,6 +24,11 @@ export async function PUT(
   const { brandId } = await params;
   const body = await req.json();
 
+  const jsonFields = {
+    colourApplication: body.colourApplication ? { value: body.colourApplication } : undefined,
+    subjects: body.subjects ? { value: body.subjects } : undefined,
+  };
+
   const data = await prisma.illustration.upsert({
     where: { brandId },
     create: {
@@ -32,8 +37,7 @@ export async function PUT(
       technique: body.technique ?? null,
       lineWeight: body.lineWeight ?? null,
       colourPalette: body.colourPalette ?? null,
-      colourApplication: body.colourApplication ? { value: body.colourApplication } : null,
-      subjects: body.subjects ? { value: body.subjects } : null,
+      ...jsonFields,
       perspective: body.perspective ?? null,
       doList: body.doList ?? [],
       dontList: body.dontList ?? [],
@@ -44,8 +48,7 @@ export async function PUT(
       technique: body.technique ?? null,
       lineWeight: body.lineWeight ?? null,
       colourPalette: body.colourPalette ?? null,
-      colourApplication: body.colourApplication ? { value: body.colourApplication } : null,
-      subjects: body.subjects ? { value: body.subjects } : null,
+      ...jsonFields,
       perspective: body.perspective ?? null,
       doList: body.doList ?? [],
       dontList: body.dontList ?? [],

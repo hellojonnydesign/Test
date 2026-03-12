@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { prisma } from "@/lib/db/prisma";
+
+export const dynamic = "force-dynamic";
 import { CreateBrandDialog } from "@/components/create-brand-dialog";
 
 const statusVariant: Record<string, "default" | "success" | "warning" | "secondary"> = {

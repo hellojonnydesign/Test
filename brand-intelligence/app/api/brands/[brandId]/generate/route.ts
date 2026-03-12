@@ -58,7 +58,7 @@ export async function POST(
     await prisma.brand.update({
       where: { id: brandId },
       data: {
-        brandConfig: config,
+        brandConfig: config as object,
         configVersion: { increment: 1 },
       },
     });

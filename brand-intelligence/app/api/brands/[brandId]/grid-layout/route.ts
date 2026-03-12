@@ -36,14 +36,14 @@ export async function PUT(
     create: {
       brandId,
       gridSystem,
-      spacingScale: body.spacingScale ?? null,
+      spacingScale: body.spacingScale ?? undefined,
       layoutPrinciples: body.layoutPrinciples ?? null,
       composition: body.composition ?? null,
       safeZones: body.safeZones ?? null,
     },
     update: {
       gridSystem,
-      spacingScale: body.spacingScale ?? null,
+      spacingScale: body.spacingScale ?? undefined,
       layoutPrinciples: body.layoutPrinciples ?? null,
       composition: body.composition ?? null,
       safeZones: body.safeZones ?? null,

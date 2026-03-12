@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Layers, Loader2 } from "lucide-react";
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
@@ -40,6 +40,51 @@ export default function LoginPage() {
   }
 
   return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <Label htmlFor="email">Email</Label>
+        <Input
+          id="email"
+          type="email"
+          autoComplete="email"
+          className="mt-1.5"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@agency.com"
+          required
+        />
+      </div>
+      <div>
+        <Label htmlFor="password">Password</Label>
+        <Input
+          id="password"
+          type="password"
+          autoComplete="current-password"
+          className="mt-1.5"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="••••••••"
+          required
+        />
+      </div>
+
+      {error && (
+        <p className="text-sm text-red-500">{error}</p>
+      )}
+
+      <Button type="submit" className="w-full" disabled={loading}>
+        {loading ? (
+          <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Signing in...</>
+        ) : (
+          "Sign in"
+        )}
+      </Button>
+    </form>
+  );
+}
+
+export default function LoginPage() {
+  return (
     <div className="flex min-h-screen items-center justify-center bg-[var(--background)] px-4">
       <div className="w-full max-w-sm">
         {/* Logo */}
@@ -52,46 +97,9 @@ export default function LoginPage() {
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              autoComplete="email"
-              className="mt-1.5"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@agency.com"
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              className="mt-1.5"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-            />
-          </div>
-
-          {error && (
-            <p className="text-sm text-red-500">{error}</p>
-          )}
-
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? (
-              <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Signing in...</>
-            ) : (
-              "Sign in"
-            )}
-          </Button>
-        </form>
+        <Suspense fallback={<div className="space-y-4 animate-pulse"><div className="h-10 bg-[var(--muted)] rounded" /><div className="h-10 bg-[var(--muted)] rounded" /><div className="h-10 bg-[var(--muted)] rounded" /></div>}>
+          <LoginForm />
+        </Suspense>
       </div>
     </div>
   );

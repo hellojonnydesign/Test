@@ -1,5 +1,3 @@
-import { Pool } from "pg";
-import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
 
 const globalForPrisma = globalThis as unknown as {
@@ -7,7 +5,26 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function createPrismaClient() {
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  const url = process.env.DATABASE_URL ?? "";
+  const isNeon = url.includes("neon.tech");
+
+  if (isNeon) {
+    // Neon serverless driver — optimal for Vercel/serverless environments
+    const { neon, neonConfig } = require("@neondatabase/serverless");
+    const { PrismaNeon } = require("@prisma/adapter-neon");
+    neonConfig.fetchConnectionCache = true;
+    const sql = neon(url);
+    const adapter = new PrismaNeon(sql);
+    return new PrismaClient({
+      adapter,
+      log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
+    });
+  }
+
+  // Local PostgreSQL via pg driver
+  const { Pool } = require("pg");
+  const { PrismaPg } = require("@prisma/adapter-pg");
+  const pool = new Pool({ connectionString: url });
   const adapter = new PrismaPg(pool);
   return new PrismaClient({
     adapter,

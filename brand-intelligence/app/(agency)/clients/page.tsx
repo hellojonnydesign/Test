@@ -5,6 +5,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { prisma } from "@/lib/db/prisma";
 import { CreateClientDialog } from "@/components/create-client-dialog";
 
+export const dynamic = "force-dynamic";
+
 async function getOrCreateAgency() {
   let agency = await prisma.agency.findFirst();
   if (!agency) {

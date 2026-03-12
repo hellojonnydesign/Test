@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { requireSession } from "@/lib/auth/session";
 
@@ -24,15 +25,19 @@ export async function PUT(
   const { brandId } = await params;
   const body = await req.json();
 
+  const jsonFields = {
+    easingCurves: body.easingCurves != null ? (body.easingCurves as Prisma.InputJsonValue) : Prisma.JsonNull,
+    durationTokens: body.durationTokens != null ? (body.durationTokens as Prisma.InputJsonValue) : Prisma.JsonNull,
+    transitionTypes: body.transitionTypes != null ? (body.transitionTypes as Prisma.InputJsonValue) : Prisma.JsonNull,
+  };
+
   const data = await prisma.motion.upsert({
     where: { brandId },
     create: {
       brandId,
       principles: body.principles ?? null,
       character: body.character ?? null,
-      easingCurves: body.easingCurves ?? null,
-      durationTokens: body.durationTokens ?? null,
-      transitionTypes: body.transitionTypes ?? null,
+      ...jsonFields,
       logoAnimation: body.logoAnimation ?? null,
       typographyAnim: body.typographyAnim ?? null,
       doList: body.doList ?? [],
@@ -42,9 +47,7 @@ export async function PUT(
     update: {
       principles: body.principles ?? null,
       character: body.character ?? null,
-      easingCurves: body.easingCurves ?? null,
-      durationTokens: body.durationTokens ?? null,
-      transitionTypes: body.transitionTypes ?? null,
+      ...jsonFields,
       logoAnimation: body.logoAnimation ?? null,
       typographyAnim: body.typographyAnim ?? null,
       doList: body.doList ?? [],
