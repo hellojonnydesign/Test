@@ -32,7 +32,7 @@ function LoginForm() {
     setLoading(false);
 
     if (result?.error) {
-      setError("Invalid email or password");
+      setError(`Error: ${result.error} (ok:${result.ok}, status:${result.status})`);
     } else {
       router.push(callbackUrl);
       router.refresh();
