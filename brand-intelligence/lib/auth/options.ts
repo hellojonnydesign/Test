@@ -1,7 +1,7 @@
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
-import { Pool } from "pg";
+import { prisma } from "@/lib/db/prisma";
 
 export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt" },
@@ -18,32 +18,30 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
-        const pool = new Pool({
-          connectionString: process.env.DATABASE_URL,
-          ssl: { rejectUnauthorized: false },
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email },
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            role: true,
+            agencyId: true,
+            passwordHash: true,
+          },
         });
 
-        try {
-          const result = await pool.query(
-            `SELECT id, email, name, role, "agencyId", "passwordHash" FROM "User" WHERE email = $1`,
-            [credentials.email]
-          );
-          const user = result.rows[0];
-          if (!user || !user.passwordHash) return null;
+        if (!user || !user.passwordHash) return null;
 
-          const valid = await bcrypt.compare(credentials.password, user.passwordHash);
-          if (!valid) return null;
+        const valid = await bcrypt.compare(credentials.password, user.passwordHash);
+        if (!valid) return null;
 
-          return {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            role: user.role,
-            agencyId: user.agencyId,
-          };
-        } finally {
-          await pool.end();
-        }
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          agencyId: user.agencyId,
+        };
       },
     }),
   ],
