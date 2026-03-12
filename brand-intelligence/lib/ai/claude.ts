@@ -40,7 +40,7 @@ export async function extractBrandGuidelinesFromText(
 ): Promise<Record<string, unknown>> {
   const message = await getClient().messages.create({
     model: "claude-3-5-haiku-20241022",
-    max_tokens: 2048,
+    max_tokens: 1024,
     messages: [
       {
         role: "user",

@@ -69,22 +69,13 @@ export async function POST(
       extractBrandGuidelinesFromText(text, brandName),
       new Promise<never>((_, reject) =>
         setTimeout(
-          () => reject(new Error("Claude API timed out after 8s — check ANTHROPIC_API_KEY is valid, or upgrade to Vercel Pro.")),
-          8000
+          () => reject(new Error("Claude API timed out — ANTHROPIC_API_KEY may be invalid, or upgrade to Vercel Pro for longer execution.")),
+          7000
         )
       ),
     ]);
 
-    // Record the import (best-effort)
-    try {
-      await sql`
-        INSERT INTO "GuidelineImport" (id, "brandId", "fileName", "fileSize", "fileUrl", status, "extractedData", "createdAt", "updatedAt")
-        VALUES (gen_random_uuid(), ${brandId}, ${file.name}, ${file.size}, '', 'COMPLETE', ${JSON.stringify(extracted)}::jsonb, NOW(), NOW())
-      `;
-    } catch {
-      // non-critical
-    }
-
+    // Return immediately — no additional async work to stay within Hobby plan's 10s limit
     return NextResponse.json({
       extracted,
       sectionsFound: Object.entries(extracted)
