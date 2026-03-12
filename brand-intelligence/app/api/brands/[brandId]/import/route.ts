@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/db/prisma";
+import { neon } from "@neondatabase/serverless";
 import { extractBrandGuidelinesFromText } from "@/lib/ai/claude";
 import { requireSession } from "@/lib/auth/session";
+
+export const runtime = "nodejs";
 
 export async function POST(
   req: NextRequest,
@@ -16,7 +17,7 @@ export async function POST(
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey || apiKey === "your-anthropic-api-key") {
     return NextResponse.json(
-      { error: "ANTHROPIC_API_KEY is not configured. Add your key to .env to enable AI import." },
+      { error: "ANTHROPIC_API_KEY is not configured in Vercel environment variables." },
       { status: 503 }
     );
   }
@@ -24,83 +25,57 @@ export async function POST(
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
-
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    const brand = await prisma.brand.findUnique({
-      where: { id: brandId },
-      select: { id: true, name: true },
-    });
-
-    if (!brand) {
-      return NextResponse.json({ error: "Brand not found" }, { status: 404 });
-    }
-
-    // Create import record
-    const importRecord = await prisma.guidelineImport.create({
-      data: {
-        brandId,
-        fileName: file.name,
-        fileSize: file.size,
-        fileUrl: "",
-        status: "PROCESSING",
-      },
-    });
-
-    // Extract text from PDF
-    // In production: use pdf-parse or a service like Adobe PDF Extract API
-    // For now, we read the file as text (works for text-based PDFs)
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
     let extractedText = "";
     try {
-      // Dynamic import to avoid build issues in environments without native modules
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const pdfParse = await import("pdf-parse") as any;
       const pdfData = await (pdfParse.default ?? pdfParse)(buffer);
       extractedText = pdfData.text;
     } catch {
-      // Fallback: treat as plain text if pdf-parse fails
       extractedText = buffer.toString("utf-8").slice(0, 50000);
     }
 
     if (!extractedText || extractedText.trim().length < 100) {
-      await prisma.guidelineImport.update({
-        where: { id: importRecord.id },
-        data: { status: "FAILED", error: "Could not extract text from PDF. Ensure the PDF contains selectable text." },
-      });
       return NextResponse.json(
-        { error: "Could not extract text from PDF" },
+        { error: "Could not extract text from PDF. Ensure the PDF contains selectable text." },
         { status: 422 }
       );
     }
 
-    // Run Claude extraction
+    // Fetch brand name for context
+    const sql = neon(process.env.DATABASE_URL!);
+    const brands = await sql`SELECT name FROM "Brand" WHERE id = ${brandId} LIMIT 1`;
+    const brandName = (brands[0]?.name as string) ?? "Unknown Brand";
+
     const extracted = await extractBrandGuidelinesFromText(
-      extractedText.slice(0, 40000), // Stay within context limits
-      brand.name
+      extractedText.slice(0, 40000),
+      brandName
     );
 
-    await prisma.guidelineImport.update({
-      where: { id: importRecord.id },
-      data: { status: "COMPLETE", extractedData: extracted as Prisma.InputJsonValue },
-    });
+    // Record the import (best-effort — don't fail if this errors)
+    try {
+      await sql`
+        INSERT INTO "GuidelineImport" (id, "brandId", "fileName", "fileSize", "fileUrl", status, "extractedData", "createdAt", "updatedAt")
+        VALUES (gen_random_uuid(), ${brandId}, ${file.name}, ${file.size}, '', 'COMPLETE', ${JSON.stringify(extracted)}::jsonb, NOW(), NOW())
+      `;
+    } catch {
+      // non-critical — ignore
+    }
 
     return NextResponse.json({
-      importId: importRecord.id,
       extracted,
       sectionsFound: Object.entries(extracted)
         .filter(([, v]) => v !== null)
         .map(([k]) => k),
     });
-  } catch (error) {
-    console.error("PDF import error:", error);
-    return NextResponse.json(
-      { error: "Import failed" },
-      { status: 500 }
-    );
+  } catch (err) {
+    return NextResponse.json({ error: String(err) }, { status: 500 });
   }
 }

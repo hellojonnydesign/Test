@@ -3,6 +3,8 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { requireSession } from "@/lib/auth/session";
 
+export const runtime = "nodejs";
+
 type Extracted = Record<string, unknown>;
 
 function str(val: unknown): string | undefined {
@@ -45,11 +47,11 @@ export async function POST(
 
   const applied: string[] = [];
 
-  await prisma.$transaction(async (tx) => {
+  try {
     // ── Logo System ──────────────────────────────────────────────────────────
     if (extracted.logoSystem && typeof extracted.logoSystem === "object") {
       const ls = extracted.logoSystem as Record<string, unknown>;
-      await tx.logoSystem.upsert({
+      await prisma.logoSystem.upsert({
         where: { brandId },
         create: {
           brandId,
@@ -74,18 +76,18 @@ export async function POST(
       const palettes = Array.isArray(cs.palettes) ? cs.palettes : [];
 
       // Delete existing colours and palettes
-      const existingSystem = await tx.colourSystem.findUnique({
+      const existingSystem = await prisma.colourSystem.findUnique({
         where: { brandId },
         include: { palettes: { include: { colours: true } } },
       });
       if (existingSystem) {
         for (const p of existingSystem.palettes) {
-          await tx.colour.deleteMany({ where: { paletteId: p.id } });
+          await prisma.colour.deleteMany({ where: { paletteId: p.id } });
         }
-        await tx.palette.deleteMany({ where: { colourSystemId: existingSystem.id } });
+        await prisma.palette.deleteMany({ where: { colourSystemId: existingSystem.id } });
       }
 
-      const colourSystem = await tx.colourSystem.upsert({
+      const colourSystem = await prisma.colourSystem.upsert({
         where: { brandId },
         create: {
           brandId,
@@ -101,7 +103,7 @@ export async function POST(
       for (let pi = 0; pi < palettes.length; pi++) {
         const p = palettes[pi] as Record<string, unknown>;
         const colours = Array.isArray(p.colours) ? p.colours : [];
-        const palette = await tx.palette.create({
+        const palette = await prisma.palette.create({
           data: {
             colourSystemId: colourSystem.id,
             name: str(p.name) || `Palette ${pi + 1}`,
@@ -112,7 +114,7 @@ export async function POST(
         for (let ci = 0; ci < colours.length; ci++) {
           const c = colours[ci] as Record<string, unknown>;
           const hex = str(c.hex) || "#000000";
-          await tx.colour.create({
+          await prisma.colour.create({
             data: {
               paletteId: palette.id,
               name: str(c.name) || `Colour ${ci + 1}`,
@@ -134,16 +136,16 @@ export async function POST(
       const ty = extracted.typography as Record<string, unknown>;
       const typefaces = Array.isArray(ty.typefaces) ? ty.typefaces : [];
 
-      const existingTyp = await tx.typography.findUnique({
+      const existingTyp = await prisma.typography.findUnique({
         where: { brandId },
         include: { typefaces: true },
       });
       if (existingTyp) {
-        await tx.typeface.deleteMany({ where: { typographyId: existingTyp.id } });
+        await prisma.typeface.deleteMany({ where: { typographyId: existingTyp.id } });
       }
 
       const validRoles = ["PRIMARY", "SECONDARY", "DISPLAY", "BODY", "ACCENT", "MONOSPACE", "EDITORIAL"];
-      const typography = await tx.typography.upsert({
+      const typography = await prisma.typography.upsert({
         where: { brandId },
         create: {
           brandId,
@@ -163,7 +165,7 @@ export async function POST(
         const role = validRoles.includes(String(tf.role).toUpperCase())
           ? (String(tf.role).toUpperCase() as "PRIMARY" | "SECONDARY" | "DISPLAY" | "BODY" | "ACCENT" | "MONOSPACE" | "EDITORIAL")
           : "PRIMARY";
-        await tx.typeface.create({
+        await prisma.typeface.create({
           data: {
             typographyId: typography.id,
             name: str(tf.name) || `Typeface ${ti + 1}`,
@@ -183,7 +185,7 @@ export async function POST(
     // ── Photography ──────────────────────────────────────────────────────────
     if (extracted.photography && typeof extracted.photography === "object") {
       const ph = extracted.photography as Record<string, unknown>;
-      await tx.photography.upsert({
+      await prisma.photography.upsert({
         where: { brandId },
         create: {
           brandId,
@@ -207,7 +209,7 @@ export async function POST(
     // ── Illustration ─────────────────────────────────────────────────────────
     if (extracted.illustration && typeof extracted.illustration === "object") {
       const il = extracted.illustration as Record<string, unknown>;
-      await tx.illustration.upsert({
+      await prisma.illustration.upsert({
         where: { brandId },
         create: {
           brandId,
@@ -235,7 +237,7 @@ export async function POST(
     // ── Motion ───────────────────────────────────────────────────────────────
     if (extracted.motion && typeof extracted.motion === "object") {
       const mo = extracted.motion as Record<string, unknown>;
-      await tx.motion.upsert({
+      await prisma.motion.upsert({
         where: { brandId },
         create: {
           brandId,
@@ -264,7 +266,7 @@ export async function POST(
     if (extracted.iconography && typeof extracted.iconography === "object") {
       const ic = extracted.iconography as Record<string, unknown>;
       const gridSize = ic.gridSize != null ? parseInt(String(ic.gridSize), 10) : undefined;
-      await tx.iconography.upsert({
+      await prisma.iconography.upsert({
         where: { brandId },
         create: {
           brandId,
@@ -292,7 +294,7 @@ export async function POST(
     // ── Grid Layout ──────────────────────────────────────────────────────────
     if (extracted.gridLayout && typeof extracted.gridLayout === "object") {
       const gl = extracted.gridLayout as Record<string, unknown>;
-      await tx.gridLayout.upsert({
+      await prisma.gridLayout.upsert({
         where: { brandId },
         create: {
           brandId,
@@ -314,7 +316,7 @@ export async function POST(
     // ── Pattern ──────────────────────────────────────────────────────────────
     if (extracted.pattern && typeof extracted.pattern === "object") {
       const pt = extracted.pattern as Record<string, unknown>;
-      await tx.pattern.upsert({
+      await prisma.pattern.upsert({
         where: { brandId },
         create: {
           brandId,
@@ -336,7 +338,7 @@ export async function POST(
     // ── Brand Voice ──────────────────────────────────────────────────────────
     if (extracted.brandVoice && typeof extracted.brandVoice === "object") {
       const bv = extracted.brandVoice as Record<string, unknown>;
-      await tx.brandVoice.upsert({
+      await prisma.brandVoice.upsert({
         where: { brandId },
         create: {
           brandId,
@@ -362,11 +364,13 @@ export async function POST(
     }
 
     // Update brand status to IN_PROGRESS if DRAFT
-    await tx.brand.updateMany({
+    await prisma.brand.updateMany({
       where: { id: brandId, status: "DRAFT" },
       data: { status: "IN_PROGRESS" },
     });
-  });
+  } catch (err) {
+    return NextResponse.json({ error: String(err) }, { status: 500 });
+  }
 
   return NextResponse.json({ applied });
 }
