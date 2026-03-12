@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import bcrypt from "bcryptjs";
 import { authOptions } from "@/lib/auth/options";
-import type { CredentialsConfig } from "next-auth/providers/credentials";
 
 export async function GET() {
   const checks: Record<string, unknown> = {};
@@ -39,18 +38,22 @@ export async function GET() {
     checks.neon = { error: String(err) };
   }
 
-  // Call authorize directly from authOptions
+  // Call the REAL authorize function (inside provider.options)
   try {
-    const credProvider = authOptions.providers[0] as CredentialsConfig;
-    const authorizeResult = await credProvider.authorize?.(
-      { email: "jonnyspinder@gmail.com", password: "admin123" },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      {} as any
-    );
-    checks.authorize = {
-      returned: authorizeResult === null ? "null" : authorizeResult === undefined ? "undefined" : "user_object",
-      userId: (authorizeResult as { id?: string } | null)?.id,
-    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const realAuthorize = (authOptions.providers[0] as any).options?.authorize;
+    if (!realAuthorize) {
+      checks.authorize = { error: "authorize not found in provider.options" };
+    } else {
+      const result = await realAuthorize(
+        { email: "jonnyspinder@gmail.com", password: "admin123" },
+        {}
+      );
+      checks.authorize = {
+        returned: result === null ? "null" : result === undefined ? "undefined" : "user_object",
+        userId: result?.id ?? null,
+      };
+    }
   } catch (err) {
     checks.authorize = { threw: true, error: String(err) };
   }

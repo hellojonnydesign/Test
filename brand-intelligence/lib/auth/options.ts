@@ -18,30 +18,25 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
-        try {
-          const sql = neon(process.env.DATABASE_URL!);
-          const rows = await sql`
-            SELECT id, email, name, role, "agencyId", "passwordHash"
-            FROM "User"
-            WHERE email = ${credentials.email}
-          `;
-          const user = rows[0];
-          if (!user || !user.passwordHash) return null;
+        const sql = neon(process.env.DATABASE_URL!);
+        const rows = await sql`
+          SELECT id, email, name, role, "agencyId", "passwordHash"
+          FROM "User"
+          WHERE email = ${credentials.email}
+        `;
+        const user = rows[0];
+        if (!user || !user.passwordHash) return null;
 
-          const valid = await bcrypt.compare(credentials.password, user.passwordHash);
-          if (!valid) return null;
+        const valid = await bcrypt.compare(credentials.password, user.passwordHash as string);
+        if (!valid) return null;
 
-          return {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            role: user.role,
-            agencyId: user.agencyId,
-          };
-        } catch (err) {
-          console.error("[authorize] error:", err);
-          return null;
-        }
+        return {
+          id: user.id as string,
+          email: user.email as string,
+          name: user.name as string,
+          role: user.role as string,
+          agencyId: user.agencyId as string,
+        };
       },
     }),
   ],
