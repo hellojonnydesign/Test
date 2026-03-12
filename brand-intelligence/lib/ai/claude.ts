@@ -66,7 +66,7 @@ export async function extractBrandGuidelinesFromText(
 ): Promise<Record<string, unknown>> {
   const message = await anthropic.messages.create({
     model: "claude-3-5-haiku-20241022",
-    max_tokens: 4096,
+    max_tokens: 2048,
     messages: [
       {
         role: "user",
