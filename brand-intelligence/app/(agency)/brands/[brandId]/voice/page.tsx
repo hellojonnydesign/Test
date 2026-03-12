@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
 import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -31,6 +32,9 @@ function newExample(): ExampleCopy {
 }
 
 export default function BrandVoicePage() {
+  const params = useParams();
+  const brandId = params.brandId as string;
+
   const [traits, setTraits] = useState<PersonalityTrait[]>([newTrait()]);
   const [toneVariants, setToneVariants] = useState({
     formal: "",
@@ -46,6 +50,50 @@ export default function BrandVoicePage() {
   const [doList, setDoList] = useState<string[]>([""]);
   const [dontList, setDontList] = useState<string[]>([""]);
   const [examples, setExamples] = useState<ExampleCopy[]>([newExample()]);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/brands/${brandId}/voice`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data) return;
+        if (data.personality) setTraits(data.personality as PersonalityTrait[]);
+        if (data.toneVariants) setToneVariants(data.toneVariants as typeof toneVariants);
+        const mh = data.messagingHierarchy as { promise?: string; pillars?: string[] } | null;
+        if (mh) {
+          setMessagingPromise(mh.promise ?? "");
+          setMessagingPillars(mh.pillars?.length ? mh.pillars : ["", "", ""]);
+        }
+        const vocab = data.vocabulary as { use?: string[]; avoid?: string[]; grammarNotes?: string } | null;
+        if (vocab) {
+          setUseWords(vocab.use?.length ? vocab.use : [""]);
+          setAvoidWords(vocab.avoid?.length ? vocab.avoid : [""]);
+          setGrammarNotes(vocab.grammarNotes ?? "");
+        }
+        setDoList(data.doList?.length ? data.doList : [""]);
+        setDontList(data.dontList?.length ? data.dontList : [""]);
+        if (data.exampleCopy) setExamples(data.exampleCopy as ExampleCopy[]);
+      })
+      .catch(() => {});
+  }, [brandId]);
+
+  async function handleSave() {
+    setIsSaving(true);
+    await fetch(`/api/brands/${brandId}/voice`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        personality: traits,
+        toneVariants,
+        messagingHierarchy: { promise: messagingPromise, pillars: messagingPillars.filter(Boolean) },
+        vocabulary: { use: useWords.filter(Boolean), avoid: avoidWords.filter(Boolean), grammarNotes },
+        doList: doList.filter(Boolean),
+        dontList: dontList.filter(Boolean),
+        exampleCopy: examples,
+      }),
+    });
+    setIsSaving(false);
+  }
 
   function updateTrait(id: string, field: keyof PersonalityTrait, value: string) {
     setTraits((prev) => prev.map((t) => (t.id === id ? { ...t, [field]: value } : t)));
@@ -339,7 +387,9 @@ export default function BrandVoicePage() {
         </CardContent>
       </Card>
 
-      <Button>Save Brand Voice</Button>
+      <Button onClick={handleSave} disabled={isSaving}>
+        {isSaving ? "Saving…" : "Save Brand Voice"}
+      </Button>
     </div>
   );
 }

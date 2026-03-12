@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
 import { Plus, X, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -32,6 +33,9 @@ interface DurationToken {
 }
 
 export default function MotionPage() {
+  const params = useParams();
+  const brandId = params.brandId as string;
+
   const [principles, setPrinciples] = useState("");
   const [character, setCharacter] = useState("");
   const [logoAnimation, setLogoAnimation] = useState("");
@@ -50,6 +54,41 @@ export default function MotionPage() {
   ]);
   const [doItems, setDoItems] = useState<string[]>([""]);
   const [dontItems, setDontItems] = useState<string[]>([""]);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/brands/${brandId}/motion`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data) return;
+        setPrinciples(data.principles ?? "");
+        setCharacter(data.character ?? "");
+        setLogoAnimation(data.logoAnimation ?? "");
+        setTypographyAnim(data.typographyAnim ?? "");
+        if (data.transitionTypes) setSelectedTransitions(data.transitionTypes as string[]);
+        if (data.easingCurves) setEasingCurves(data.easingCurves as EasingCurve[]);
+        if (data.durationTokens) setDurations(data.durationTokens as DurationToken[]);
+        setDoItems(data.doList?.length ? data.doList : [""]);
+        setDontItems(data.dontList?.length ? data.dontList : [""]);
+      })
+      .catch(() => {});
+  }, [brandId]);
+
+  async function handleSave() {
+    setIsSaving(true);
+    await fetch(`/api/brands/${brandId}/motion`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        principles, character, logoAnimation, typographyAnim,
+        transitionTypes: selectedTransitions,
+        easingCurves, durationTokens: durations,
+        doList: doItems.filter(Boolean),
+        dontList: dontItems.filter(Boolean),
+      }),
+    });
+    setIsSaving(false);
+  }
 
   function toggleTransition(t: string) {
     setSelectedTransitions((prev) =>
@@ -303,7 +342,9 @@ export default function MotionPage() {
         </CardContent>
       </Card>
 
-      <Button>Save Motion Guidelines</Button>
+      <Button onClick={handleSave} disabled={isSaving}>
+        {isSaving ? "Saving…" : "Save Motion Guidelines"}
+      </Button>
     </div>
   );
 }

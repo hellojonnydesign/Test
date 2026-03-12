@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,6 +9,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
 export default function LayoutPage() {
+  const params = useParams();
+  const brandId = params.brandId as string;
+
   const [columns, setColumns] = useState("12");
   const [gutter, setGutter] = useState("24");
   const [margin, setMargin] = useState("32");
@@ -15,6 +19,36 @@ export default function LayoutPage() {
   const [layoutPrinciples, setLayoutPrinciples] = useState("");
   const [composition, setComposition] = useState("");
   const [safeZones, setSafeZones] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/brands/${brandId}/grid-layout`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data) return;
+        const gs = data.gridSystem as { columns?: string; gutter?: string; margin?: string; baseUnit?: string } | null;
+        if (gs) {
+          setColumns(gs.columns ?? "12");
+          setGutter(gs.gutter ?? "24");
+          setMargin(gs.margin ?? "32");
+          setBaseUnit(gs.baseUnit ?? "8");
+        }
+        setLayoutPrinciples(data.layoutPrinciples ?? "");
+        setComposition(data.composition ?? "");
+        setSafeZones(data.safeZones ?? "");
+      })
+      .catch(() => {});
+  }, [brandId]);
+
+  async function handleSave() {
+    setIsSaving(true);
+    await fetch(`/api/brands/${brandId}/grid-layout`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ columns, gutter, margin, baseUnit, layoutPrinciples, composition, safeZones }),
+    });
+    setIsSaving(false);
+  }
 
   return (
     <div className="p-8 max-w-4xl">
@@ -71,7 +105,9 @@ export default function LayoutPage() {
         </CardContent>
       </Card>
 
-      <Button>Save Layout & Grid</Button>
+      <Button onClick={handleSave} disabled={isSaving}>
+        {isSaving ? "Saving…" : "Save Layout & Grid"}
+      </Button>
     </div>
   );
 }

@@ -1,9 +1,6 @@
+import { notFound } from "next/navigation";
 import { BrandNav } from "@/components/layout/brand-nav";
-
-// In production this would fetch brand from DB
-async function getBrand(brandId: string) {
-  return { id: brandId, name: "Horizon Foods" };
-}
+import { prisma } from "@/lib/db/prisma";
 
 export default async function BrandLayout({
   children,
@@ -13,7 +10,11 @@ export default async function BrandLayout({
   params: Promise<{ brandId: string }>;
 }) {
   const { brandId } = await params;
-  const brand = await getBrand(brandId);
+  const brand = await prisma.brand.findUnique({
+    where: { id: brandId },
+    select: { id: true, name: true },
+  });
+  if (!brand) notFound();
 
   return (
     <div className="flex h-screen overflow-hidden">
