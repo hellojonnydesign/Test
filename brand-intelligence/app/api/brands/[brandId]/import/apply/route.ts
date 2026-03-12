@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
+import { requireSession } from "@/lib/auth/session";
 
 type Extracted = Record<string, unknown>;
 
@@ -23,6 +24,9 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ brandId: string }> }
 ) {
+  const { error } = await requireSession();
+  if (error) return error;
+
   const { brandId } = await params;
   const { extracted } = (await req.json()) as { extracted: Extracted };
 

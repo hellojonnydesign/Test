@@ -1,5 +1,6 @@
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db/prisma";
 
 export const authOptions: NextAuthOptions = {
@@ -15,16 +16,25 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email) return null;
+        if (!credentials?.email || !credentials?.password) return null;
 
         const user = await prisma.user.findUnique({
           where: { email: credentials.email },
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            role: true,
+            agencyId: true,
+            passwordHash: true,
+          },
         });
 
-        if (!user) return null;
+        if (!user || !user.passwordHash) return null;
 
-        // Password verification would go here with bcrypt in production
-        // For now, returns user if they exist
+        const valid = await bcrypt.compare(credentials.password, user.passwordHash);
+        if (!valid) return null;
+
         return {
           id: user.id,
           email: user.email,

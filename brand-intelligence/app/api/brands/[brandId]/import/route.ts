@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { extractBrandGuidelinesFromText } from "@/lib/ai/claude";
+import { requireSession } from "@/lib/auth/session";
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ brandId: string }> }
 ) {
+  const { error } = await requireSession();
+  if (error) return error;
+
   const { brandId } = await params;
 
   try {
